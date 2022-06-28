@@ -23,10 +23,13 @@
 
 using namespace llvm;
 
-#if LLVM_ENABLE_ZLIB
+using namespace compression;
+
 static Error createError(StringRef Err) {
   return make_error<StringError>(Err, inconvertibleErrorCode());
 }
+
+#if LLVM_ENABLE_ZLIB
 
 static StringRef convertZlibCodeToString(int Code) {
   switch (Code) {
@@ -77,14 +80,10 @@ Error zlib::uncompress(StringRef InputBuffer,
                        SmallVectorImpl<char> &UncompressedBuffer,
                        size_t UncompressedSize) {
   UncompressedBuffer.resize_for_overwrite(UncompressedSize);
-  Error E =
-      uncompress(InputBuffer, UncompressedBuffer.data(), UncompressedSize);
+  Error E = zlib::uncompress(InputBuffer, UncompressedBuffer.data(),
+                             UncompressedSize);
   UncompressedBuffer.truncate(UncompressedSize);
   return E;
-}
-
-uint32_t zlib::crc32(StringRef Buffer) {
-  return ::crc32(0, (const Bytef *)Buffer.data(), Buffer.size());
 }
 
 #else
@@ -101,8 +100,5 @@ Error zlib::uncompress(StringRef InputBuffer,
                        SmallVectorImpl<char> &UncompressedBuffer,
                        size_t UncompressedSize) {
   llvm_unreachable("zlib::uncompress is unavailable");
-}
-uint32_t zlib::crc32(StringRef Buffer) {
-  llvm_unreachable("zlib::crc32 is unavailable");
 }
 #endif

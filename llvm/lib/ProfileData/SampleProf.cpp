@@ -87,8 +87,8 @@ class SampleProfErrorCategoryType : public std::error_category {
       return "Ostream does not support seek";
     case sampleprof_error::uncompress_failed:
       return "Uncompress failure";
-    case sampleprof_error::zlib_unavailable:
-      return "Zlib is unavailable";
+    case sampleprof_error::compression_unavailable:
+      return "Profile compression is unavailable";
     case sampleprof_error::hash_mismatch:
       return "Function hash mismatch";
     }

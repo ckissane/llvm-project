@@ -323,7 +323,7 @@ enum class instrprof_error {
   compress_failed,
   uncompress_failed,
   empty_raw_profile,
-  zlib_unavailable
+  compression_unavailable
 };
 
 inline std::error_code make_error_code(instrprof_error E) {

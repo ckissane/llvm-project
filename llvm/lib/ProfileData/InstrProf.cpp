@@ -149,9 +149,9 @@ static std::string getInstrProfErrString(instrprof_error Err,
   case instrprof_error::empty_raw_profile:
     OS << "empty raw profile file";
     break;
-  case instrprof_error::zlib_unavailable:
-    OS << "profile uses zlib compression but the profile reader was built "
-          "without zlib support";
+  case instrprof_error::compression_unavailable:
+    OS << "profile uses compression but the profile reader was built "
+          "without support for compression (likely no zlib)";
     break;
   }
 
@@ -467,8 +467,9 @@ Error collectPGOFuncNameStrings(ArrayRef<std::string> NameStrs,
   }
 
   SmallString<128> CompressedNameStrings;
-  zlib::compress(StringRef(UncompressedNameStrings), CompressedNameStrings,
-                 zlib::BestSizeCompression);
+  compression::profile::compress(StringRef(UncompressedNameStrings),
+                                 CompressedNameStrings,
+                                 compression::profile::BestSizeCompression);
 
   return WriteStringToResult(CompressedNameStrings.size(),
                              CompressedNameStrings);
@@ -488,7 +489,7 @@ Error collectPGOFuncNameStrings(ArrayRef<GlobalVariable *> NameVars,
     NameStrs.push_back(std::string(getPGOFuncNameVarInitializer(NameVar)));
   }
   return collectPGOFuncNameStrings(
-      NameStrs, zlib::isAvailable() && doCompression, Result);
+      NameStrs, compression::profile::isAvailable() && doCompression, Result);
 }
 
 Error readPGOFuncNameStrings(StringRef NameStrings, InstrProfSymtab &Symtab) {
@@ -504,14 +505,15 @@ Error readPGOFuncNameStrings(StringRef NameStrings, InstrProfSymtab &Symtab) {
     SmallString<128> UncompressedNameStrings;
     StringRef NameStrings;
     if (isCompressed) {
-      if (!llvm::zlib::isAvailable())
-        return make_error<InstrProfError>(instrprof_error::zlib_unavailable);
+      if (!llvm::compression::profile::isAvailable())
+        return make_error<InstrProfError>(
+            instrprof_error::compression_unavailable);
 
       StringRef CompressedNameStrings(reinterpret_cast<const char *>(P),
                                       CompressedSize);
-      if (Error E =
-              zlib::uncompress(CompressedNameStrings, UncompressedNameStrings,
-                               UncompressedSize)) {
+      if (Error E = compression::profile::uncompress(CompressedNameStrings,
+                                                     UncompressedNameStrings,
+                                                     UncompressedSize)) {
         consumeError(std::move(E));
         return make_error<InstrProfError>(instrprof_error::uncompress_failed);
       }
