@@ -183,6 +183,7 @@ Changes to the C API
 * Refactor compression namespaces across the project, making way for a possible
   introduction of alternatives to zlib compression in the llvm toolchain.
   Changes are as follows:
+  * Remove crc32 from zlib compression namespace, people should use the ``llvm::crc32`` instead.
   * Relocate the ``llvm::zlib`` namespace to ``llvm::compression::zlib``.
   * Code that explictly needs ``zlib`` compression (IE zlib elf debug sections) should use ``llvm::compression::zlib``.
   * Code interfacing with compressed profile data should use ``llvm::compression::profile``.
