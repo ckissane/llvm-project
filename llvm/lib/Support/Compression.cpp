@@ -20,6 +20,9 @@
 #if LLVM_ENABLE_ZLIB
 #include <zlib.h>
 #endif
+#if LLVM_ENABLE_ZSTD
+#include <zstd.h>
+#endif
 
 using namespace llvm;
 
@@ -100,5 +103,65 @@ Error zlib::uncompress(StringRef InputBuffer,
                        SmallVectorImpl<char> &UncompressedBuffer,
                        size_t UncompressedSize) {
   llvm_unreachable("zlib::uncompress is unavailable");
+}
+#endif
+
+#if LLVM_ENABLE_ZSTD
+
+bool zstd::isAvailable() { return true; }
+
+void zstd::compress(StringRef InputBuffer,
+                    SmallVectorImpl<char> &CompressedBuffer, int Level) {
+  unsigned long CompressedBufferSize = ::ZSTD_compressBound(InputBuffer.size());
+  CompressedBuffer.resize_for_overwrite(CompressedBufferSize);
+  unsigned long CompressedSize = ::ZSTD_compress(
+      (Bytef *)CompressedBuffer.data(), CompressedBufferSize,
+      (const Bytef *)InputBuffer.data(), InputBuffer.size(), Level);
+  if (ZSTD_isError(CompressedSize))
+    report_bad_alloc_error("Allocation failed");
+  // Tell MemorySanitizer that zstd output buffer is fully initialized.
+  // This avoids a false report when running LLVM with uninstrumented ZLib.
+  __msan_unpoison(CompressedBuffer.data(), CompressedSize);
+  CompressedBuffer.truncate(CompressedSize);
+}
+
+Error zstd::uncompress(StringRef InputBuffer, char *UncompressedBuffer,
+                       size_t &UncompressedSize) {
+  unsigned long long const rSize = ZSTD_getFrameContentSize(
+      (const Bytef *)InputBuffer.data(), InputBuffer.size());
+  size_t const Res =
+      ::ZSTD_decompress((Bytef *)UncompressedBuffer, rSize,
+                        (const Bytef *)InputBuffer.data(), InputBuffer.size());
+  UncompressedSize = Res;
+  // Tell MemorySanitizer that zstd output buffer is fully initialized.
+  // This avoids a false report when running LLVM with uninstrumented ZLib.
+  __msan_unpoison(UncompressedBuffer, UncompressedSize);
+  return Res != rSize ? createError(ZSTD_getErrorName(Res)) : Error::success();
+}
+
+Error zstd::uncompress(StringRef InputBuffer,
+                       SmallVectorImpl<char> &UncompressedBuffer,
+                       size_t UncompressedSize) {
+  UncompressedBuffer.resize_for_overwrite(UncompressedSize);
+  Error E = zstd::uncompress(InputBuffer, UncompressedBuffer.data(),
+                             UncompressedSize);
+  UncompressedBuffer.truncate(UncompressedSize);
+  return E;
+}
+
+#else
+bool zstd::isAvailable() { return false; }
+void zstd::compress(StringRef InputBuffer,
+                    SmallVectorImpl<char> &CompressedBuffer, int Level) {
+  llvm_unreachable("zstd::compress is unavailable");
+}
+Error zstd::uncompress(StringRef InputBuffer, char *UncompressedBuffer,
+                       size_t &UncompressedSize) {
+  llvm_unreachable("zstd::uncompress is unavailable");
+}
+Error zstd::uncompress(StringRef InputBuffer,
+                       SmallVectorImpl<char> &UncompressedBuffer,
+                       size_t UncompressedSize) {
+  llvm_unreachable("zstd::uncompress is unavailable");
 }
 #endif

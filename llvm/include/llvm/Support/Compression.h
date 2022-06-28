@@ -43,7 +43,32 @@ Error uncompress(StringRef InputBuffer,
 
 } // End of namespace zlib
 
+namespace zstd {
+
+static constexpr int NoCompression = -5;
+static constexpr int BestSpeedCompression = 1;
+static constexpr int DefaultCompression = 5;
+static constexpr int BestSizeCompression = 12;
+
+bool isAvailable();
+
+void compress(StringRef InputBuffer, SmallVectorImpl<char> &CompressedBuffer,
+              int Level = DefaultCompression);
+
+Error uncompress(StringRef InputBuffer, char *UncompressedBuffer,
+                 size_t &UncompressedSize);
+
+Error uncompress(StringRef InputBuffer,
+                 SmallVectorImpl<char> &UncompressedBuffer,
+                 size_t UncompressedSize);
+
+} // End of namespace zstd
+
+#if LLVM_ENABLE_ZSTD
+namespace tooling = llvm::compression::zstd;
+#else
 namespace tooling = llvm::compression::zlib;
+#endif
 
 namespace profile = llvm::compression::tooling;
 
