@@ -27,6 +27,7 @@ namespace presburger {
 class IntegerRelation;
 class IntegerPolyhedron;
 class PresburgerSet;
+class PresburgerRelation;
 
 /// An IntegerRelation represents the set of points from a PresburgerSpace that
 /// satisfy a list of affine constraints. Affine constraints can be inequalities
@@ -480,11 +481,12 @@ public:
   /// position `pos` of dstKind, otherwise they are placed after all the other
   /// variables of kind dstKind. The internal ordering among the moved variables
   /// is preserved.
-  void covertVarKind(VarKind srcKind, unsigned varStart, unsigned varLimit,
-                     VarKind dstKind, unsigned pos);
+  void convertVarKind(VarKind srcKind, unsigned varStart, unsigned varLimit,
+                      VarKind dstKind, unsigned pos);
   void convertVarKind(VarKind srcKind, unsigned varStart, unsigned varLimit,
                       VarKind dstKind) {
-    covertVarKind(srcKind, varStart, varLimit, dstKind, getNumVarKind(dstKind));
+    convertVarKind(srcKind, varStart, varLimit, dstKind,
+                   getNumVarKind(dstKind));
   }
   void convertToLocal(VarKind kind, unsigned varStart, unsigned varLimit) {
     convertVarKind(kind, varStart, varLimit, VarKind::Local);
@@ -574,6 +576,12 @@ public:
   /// Formally, R1.applyRange(R2) is the same as R1.compose(R2) but we provide
   /// this for uniformity with `applyDomain`.
   void applyRange(const IntegerRelation &rel);
+
+  /// Compute an equivalent representation of the same set, such that all local
+  /// vars in all disjuncts have division representations. This representation
+  /// may involve local vars that correspond to divisions, and may also be a
+  /// union of convex disjuncts.
+  PresburgerRelation computeReprWithOnlyDivLocals() const;
 
   void print(raw_ostream &os) const;
   void dump() const;
@@ -759,12 +767,6 @@ public:
   /// column position (i.e., not relative to the kind of variable) of the
   /// first added variable.
   unsigned insertVar(VarKind kind, unsigned pos, unsigned num = 1) override;
-
-  /// Compute an equivalent representation of the same set, such that all local
-  /// ids have division representations. This representation may involve
-  /// local ids that correspond to divisions, and may also be a union of convex
-  /// disjuncts.
-  PresburgerSet computeReprWithOnlyDivLocals() const;
 
   /// Compute the symbolic integer lexmin of the polyhedron.
   /// This finds, for every assignment to the symbols, the lexicographically

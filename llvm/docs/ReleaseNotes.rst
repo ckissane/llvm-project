@@ -214,6 +214,7 @@ Changes to the LLVM tools
 * (Experimental) :manpage:`llvm-symbolizer(1)` now has ``--filter-markup`` to
   filter :doc:`Symbolizer Markup </SymbolizerMarkupFormat>` into human-readable
   form.
+* :doc:`llvm-objcopy <CommandGuide/llvm-objcopy>` has removed support for the legacy ``zlib-gnu`` format.
 
 Changes to LLDB
 ---------------------------------
