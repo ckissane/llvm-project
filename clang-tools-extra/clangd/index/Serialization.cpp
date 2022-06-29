@@ -238,8 +238,9 @@ llvm::Expected<StringTableIn> readStringTable(llvm::StringRef Data) {
       return std::move(E);
     Uncompressed = UncompressedStorage;
   } else
-    return error(
-        "Compressed string table, but compression::serialize is unavailable");
+    return error("Compressed string table, but compression::serialize (alias "
+                 "to compression::" +
+                 compression::serialize::AlgorithmName + ") is unavailable");
 
   StringTableIn Table;
   llvm::StringSaver Saver(Table.Arena);
