@@ -24,6 +24,7 @@ namespace compression {
 
 namespace zlib {
 
+static constexpr std::string AlgorithmName = "zlib";
 static constexpr int NoCompression = 0;
 static constexpr int BestSpeedCompression = 1;
 static constexpr int DefaultCompression = 6;
@@ -45,6 +46,7 @@ Error uncompress(StringRef InputBuffer,
 
 namespace zstd {
 
+static constexpr std::string AlgorithmName = "zstd";
 static constexpr int NoCompression = -5;
 static constexpr int BestSpeedCompression = 1;
 static constexpr int DefaultCompression = 5;
