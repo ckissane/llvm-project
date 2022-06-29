@@ -165,16 +165,16 @@ void IntegerRelation::truncate(const CountsSnapshot &counts) {
   removeEqualityRange(counts.getNumEqs(), getNumEqualities());
 }
 
-PresburgerSet IntegerPolyhedron::computeReprWithOnlyDivLocals() const {
+PresburgerRelation IntegerRelation::computeReprWithOnlyDivLocals() const {
   // If there are no locals, we're done.
   if (getNumLocalVars() == 0)
-    return PresburgerSet(*this);
+    return PresburgerRelation(*this);
 
   // Move all the non-div locals to the end, as the current API to
   // SymbolicLexMin requires these to form a contiguous range.
   //
   // Take a copy so we can perform mutations.
-  IntegerPolyhedron copy = *this;
+  IntegerRelation copy = *this;
   std::vector<MaybeLocalRepr> reprs;
   copy.getLocalReprs(reprs);
 
@@ -197,7 +197,7 @@ PresburgerSet IntegerPolyhedron::computeReprWithOnlyDivLocals() const {
 
   // If there are no non-div locals, we're done.
   if (numNonDivLocals == 0)
-    return PresburgerSet(*this);
+    return PresburgerRelation(*this);
 
   // We computeSymbolicIntegerLexMin by considering the non-div locals as
   // "non-symbols" and considering everything else as "symbols". This will
@@ -215,7 +215,7 @@ PresburgerSet IntegerPolyhedron::computeReprWithOnlyDivLocals() const {
                          IntegerPolyhedron(PresburgerSpace::getSetSpace(
                              /*numDims=*/copy.getNumVars() - numNonDivLocals)))
           .computeSymbolicIntegerLexMin();
-  PresburgerSet result =
+  PresburgerRelation result =
       lexminResult.lexmin.getDomain().unionSet(lexminResult.unboundedDomain);
 
   // The result set might lie in the wrong space -- all its ids are dims.
@@ -1262,16 +1262,16 @@ void IntegerRelation::removeRedundantLocalVars() {
   }
 }
 
-void IntegerRelation::covertVarKind(VarKind srcKind, unsigned idStart,
-                                    unsigned idLimit, VarKind dstKind,
-                                    unsigned pos) {
-  assert(idLimit <= getNumVarKind(srcKind) && "Invalid id range");
+void IntegerRelation::convertVarKind(VarKind srcKind, unsigned varStart,
+                                     unsigned varLimit, VarKind dstKind,
+                                     unsigned pos) {
+  assert(varLimit <= getNumVarKind(srcKind) && "Invalid id range");
 
-  if (idStart >= idLimit)
+  if (varStart >= varLimit)
     return;
 
   // Append new local variables corresponding to the dimensions to be converted.
-  unsigned convertCount = idLimit - idStart;
+  unsigned convertCount = varLimit - varStart;
   unsigned newVarsBegin = insertVar(dstKind, pos, convertCount);
 
   // Swap the new local variables with dimensions.
@@ -1283,10 +1283,10 @@ void IntegerRelation::covertVarKind(VarKind srcKind, unsigned idStart,
   // created ids we're swapping with were zero-initialized).
   unsigned offset = getVarKindOffset(srcKind);
   for (unsigned i = 0; i < convertCount; ++i)
-    swapVar(offset + idStart + i, newVarsBegin + i);
+    swapVar(offset + varStart + i, newVarsBegin + i);
 
   // Complete the move by deleting the initially occupied columns.
-  removeVarRange(srcKind, idStart, idLimit);
+  removeVarRange(srcKind, varStart, varLimit);
 }
 
 void IntegerRelation::addBound(BoundType type, unsigned pos, int64_t value) {
@@ -1326,21 +1326,12 @@ void IntegerRelation::addLocalFloorDiv(ArrayRef<int64_t> dividend,
 
   appendVar(VarKind::Local);
 
-  // Add two constraints for this new variable 'q'.
-  SmallVector<int64_t, 8> bound(dividend.size() + 1);
-
-  // dividend - q * divisor >= 0
-  std::copy(dividend.begin(), dividend.begin() + dividend.size() - 1,
-            bound.begin());
-  bound.back() = dividend.back();
-  bound[getNumVars() - 1] = -divisor;
-  addInequality(bound);
-
-  // -dividend +qdivisor * q + divisor - 1 >= 0
-  std::transform(bound.begin(), bound.end(), bound.begin(),
-                 std::negate<int64_t>());
-  bound[bound.size() - 1] += divisor - 1;
-  addInequality(bound);
+  SmallVector<int64_t, 8> dividendCopy(dividend.begin(), dividend.end());
+  dividendCopy.insert(dividendCopy.end() - 1, 0);
+  addInequality(
+      getDivLowerBound(dividendCopy, divisor, dividendCopy.size() - 2));
+  addInequality(
+      getDivUpperBound(dividendCopy, divisor, dividendCopy.size() - 2));
 }
 
 /// Finds an equality that equates the specified variable to a constant.
@@ -2234,7 +2225,7 @@ void IntegerRelation::compose(const IntegerRelation &rel) {
   appendVar(VarKind::Range, copyRel.getNumRangeVars());
 
   // Convert R2 to B X C.
-  copyRel.covertVarKind(VarKind::Domain, 0, numBVars, VarKind::Range, 0);
+  copyRel.convertVarKind(VarKind::Domain, 0, numBVars, VarKind::Range, 0);
 
   // Intersect R2 to range of R1.
   intersectRange(IntegerPolyhedron(copyRel));
