@@ -19,6 +19,8 @@
 
 using namespace llvm;
 
+using namespace llvm::compression;
+
 namespace {
 
 #if LLVM_ENABLE_ZLIB

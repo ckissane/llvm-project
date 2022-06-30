@@ -180,6 +180,14 @@ Changes to the C API
   constant fold the operands if possible and create an instruction otherwise:
   * ``LLVMConstExtractValue``
 
+* Refactor compression namespaces across the project, making way for a possible
+  introduction of alternatives to zlib compression in the llvm toolchain.
+  Changes are as follows:
+  * Relocate the ``llvm::zlib`` namespace to ``llvm::compression::zlib``.
+  * Code that explictly needs ``zlib`` compression (IE zlib elf debug sections) should use ``llvm::compression::zlib``.
+  * Code interfacing with compressed profile data should use ``llvm::compression::profile``.
+  * Code interfacing with compressed serialized data should use ``llvm::compression::serialize``.
+
 Changes to the Go bindings
 --------------------------
 
