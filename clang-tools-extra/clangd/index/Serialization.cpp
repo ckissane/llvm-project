@@ -190,9 +190,9 @@ public:
       RawTable.append(std::string(S));
       RawTable.push_back(0);
     }
-    if (llvm::zlib::isAvailable()) {
+    if (llvm::compression::serialize::isAvailable()) {
       llvm::SmallString<1> Compressed;
-      llvm::zlib::compress(RawTable, Compressed);
+      llvm::compression::serialize::compress(RawTable, Compressed);
       write32(RawTable.size(), OS);
       OS << Compressed;
     } else {
@@ -223,7 +223,7 @@ llvm::Expected<StringTableIn> readStringTable(llvm::StringRef Data) {
   llvm::SmallString<1> UncompressedStorage;
   if (UncompressedSize == 0) // No compression
     Uncompressed = R.rest();
-  else if (llvm::zlib::isAvailable()) {
+  else if (llvm::compression::serialize::isAvailable()) {
     // Don't allocate a massive buffer if UncompressedSize was corrupted
     // This is effective for sharded index, but not big monolithic ones, as
     // once compressed size reaches 4MB nothing can be ruled out.
@@ -233,12 +233,13 @@ llvm::Expected<StringTableIn> readStringTable(llvm::StringRef Data) {
       return error("Bad stri table: uncompress {0} -> {1} bytes is implausible",
                    R.rest().size(), UncompressedSize);
 
-    if (llvm::Error E = llvm::zlib::uncompress(R.rest(), UncompressedStorage,
-                                               UncompressedSize))
+    if (llvm::Error E = llvm::compression::serialize::uncompress(
+            R.rest(), UncompressedStorage, UncompressedSize))
       return std::move(E);
     Uncompressed = UncompressedStorage;
   } else
-    return error("Compressed string table, but zlib is unavailable");
+    return error("Compressed string table, but " +
+                 compression::serialize::AlgorithmName + " is unavailable");
 
   StringTableIn Table;
   llvm::StringSaver Saver(Table.Arena);

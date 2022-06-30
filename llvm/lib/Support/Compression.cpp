@@ -23,10 +23,9 @@
 
 using namespace llvm;
 
+using namespace llvm::compression;
+
 #if LLVM_ENABLE_ZLIB
-static Error createError(StringRef Err) {
-  return make_error<StringError>(Err, inconvertibleErrorCode());
-}
 
 static StringRef convertZlibCodeToString(int Code) {
   switch (Code) {
@@ -70,15 +69,17 @@ Error zlib::uncompress(StringRef InputBuffer, char *UncompressedBuffer,
   // Tell MemorySanitizer that zlib output buffer is fully initialized.
   // This avoids a false report when running LLVM with uninstrumented ZLib.
   __msan_unpoison(UncompressedBuffer, UncompressedSize);
-  return Res ? createError(convertZlibCodeToString(Res)) : Error::success();
+  return Res ? make_error<StringError>(convertZlibCodeToString(Res),
+                                       inconvertibleErrorCode())
+             : Error::success();
 }
 
 Error zlib::uncompress(StringRef InputBuffer,
                        SmallVectorImpl<char> &UncompressedBuffer,
                        size_t UncompressedSize) {
   UncompressedBuffer.resize_for_overwrite(UncompressedSize);
-  Error E =
-      uncompress(InputBuffer, UncompressedBuffer.data(), UncompressedSize);
+  Error E = zlib::uncompress(InputBuffer, UncompressedBuffer.data(),
+                             UncompressedSize);
   UncompressedBuffer.truncate(UncompressedSize);
   return E;
 }
