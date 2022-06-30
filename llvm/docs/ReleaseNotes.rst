@@ -187,6 +187,7 @@ Changes to the C API
   * Code that explictly needs ``zlib`` compression (IE zlib elf debug sections) should use ``llvm::compression::zlib``.
   * Code interfacing with compressed profile data should use ``llvm::compression::profile``.
   * Code interfacing with compressed serialized data should use ``llvm::compression::serialize``.
+  * Remove crc32 from zlib compression namespace, people should use the ``llvm::crc32`` instead.
 
 Changes to the Go bindings
 --------------------------
