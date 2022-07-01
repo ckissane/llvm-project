@@ -391,8 +391,8 @@ TEST(SerializationTest, NoCrashOnBadArraySize) {
 // Check we detect invalid string table size size without allocating it first.
 // If this detection fails, the test should allocate a huge array and crash.
 TEST(SerializationTest, NoCrashOnBadStringTableSize) {
-  if (!llvm::compression::serialize::isAvailable()) {
-    log("skipping test, no " + compression::serialize::AlgorithmName);
+  if (!llvm::compression::zlib::isAvailable()) {
+    log("skipping test, no zlib");
     return;
   }
 

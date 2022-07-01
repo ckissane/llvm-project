@@ -1871,15 +1871,16 @@ bool RISCVDAGToDAGISel::SelectAddrRegImm(SDValue Addr, SDValue &Base,
   if (SelectAddrFrameIndex(Addr, Base, Offset))
     return true;
 
+  SDLoc DL(Addr);
+  MVT VT = Addr.getSimpleValueType();
+
   if (CurDAG->isBaseWithConstantOffset(Addr)) {
     int64_t CVal = cast<ConstantSDNode>(Addr.getOperand(1))->getSExtValue();
     if (isInt<12>(CVal)) {
       Base = Addr.getOperand(0);
       if (auto *FIN = dyn_cast<FrameIndexSDNode>(Base))
-        Base = CurDAG->getTargetFrameIndex(FIN->getIndex(),
-                                           Subtarget->getXLenVT());
-      Offset = CurDAG->getTargetConstant(CVal, SDLoc(Addr),
-                                         Subtarget->getXLenVT());
+        Base = CurDAG->getTargetFrameIndex(FIN->getIndex(), VT);
+      Offset = CurDAG->getTargetConstant(CVal, DL, VT);
       return true;
     }
   }
@@ -1893,8 +1894,6 @@ bool RISCVDAGToDAGISel::SelectAddrRegImm(SDValue Addr, SDValue &Base,
       // We can use an ADDI for part of the offset and fold the rest into the
       // load/store. This mirrors the AddiPair PatFrag in RISCVInstrInfo.td.
       int64_t Adj = CVal < 0 ? -2048 : 2047;
-      SDLoc DL(Addr);
-      MVT VT = Addr.getSimpleValueType();
       Base = SDValue(
           CurDAG->getMachineNode(RISCV::ADDI, DL, VT, Addr.getOperand(0),
                                  CurDAG->getTargetConstant(Adj, DL, VT)),
@@ -1905,7 +1904,7 @@ bool RISCVDAGToDAGISel::SelectAddrRegImm(SDValue Addr, SDValue &Base,
   }
 
   Base = Addr;
-  Offset = CurDAG->getTargetConstant(0, SDLoc(Addr), Subtarget->getXLenVT());
+  Offset = CurDAG->getTargetConstant(0, DL, VT);
   return true;
 }
 
@@ -2270,7 +2269,8 @@ bool RISCVDAGToDAGISel::doPeepholeLoadStoreADDI(SDNode *N) {
     // to provide a margin of safety before off1 can overflow the 12 bits.
     // Check if off2 falls within that margin; if so off1+off2 can't overflow.
     const DataLayout &DL = CurDAG->getDataLayout();
-    Align Alignment = GA->getGlobal()->getPointerAlignment(DL);
+    Align Alignment = commonAlignment(GA->getGlobal()->getPointerAlignment(DL),
+                                      GA->getOffset());
     if (Offset2 != 0 && Alignment <= Offset2)
       return false;
     int64_t Offset1 = GA->getOffset();
@@ -2280,7 +2280,7 @@ bool RISCVDAGToDAGISel::doPeepholeLoadStoreADDI(SDNode *N) {
         CombinedOffset, GA->getTargetFlags());
   } else if (auto *CP = dyn_cast<ConstantPoolSDNode>(ImmOperand)) {
     // Ditto.
-    Align Alignment = CP->getAlign();
+    Align Alignment = commonAlignment(CP->getAlign(), CP->getOffset());
     if (Offset2 != 0 && Alignment <= Offset2)
       return false;
     int64_t Offset1 = CP->getOffset();

@@ -44,10 +44,6 @@ Error uncompress(StringRef InputBuffer,
 
 } // End of namespace zlib
 
-namespace profile = llvm::compression::zlib;
-
-namespace serialize = llvm::compression::zlib;
-
 } // End of namespace compression
 
 } // End of namespace llvm
