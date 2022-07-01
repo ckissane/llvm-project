@@ -467,9 +467,9 @@ Error collectPGOFuncNameStrings(ArrayRef<std::string> NameStrs,
   }
 
   SmallString<128> CompressedNameStrings;
-  compression::profile::compress(StringRef(UncompressedNameStrings),
-                                 CompressedNameStrings,
-                                 compression::profile::BestSizeCompression);
+  compression::zlib::compress(StringRef(UncompressedNameStrings),
+                              CompressedNameStrings,
+                              compression::zlib::BestSizeCompression);
 
   return WriteStringToResult(CompressedNameStrings.size(),
                              CompressedNameStrings);
@@ -489,7 +489,7 @@ Error collectPGOFuncNameStrings(ArrayRef<GlobalVariable *> NameVars,
     NameStrs.push_back(std::string(getPGOFuncNameVarInitializer(NameVar)));
   }
   return collectPGOFuncNameStrings(
-      NameStrs, compression::profile::isAvailable() && doCompression, Result);
+      NameStrs, compression::zlib::isAvailable() && doCompression, Result);
 }
 
 Error readPGOFuncNameStrings(StringRef NameStrings, InstrProfSymtab &Symtab) {
@@ -505,14 +505,14 @@ Error readPGOFuncNameStrings(StringRef NameStrings, InstrProfSymtab &Symtab) {
     SmallString<128> UncompressedNameStrings;
     StringRef NameStrings;
     if (isCompressed) {
-      if (!llvm::compression::profile::isAvailable())
+      if (!llvm::compression::zlib::isAvailable())
         return make_error<InstrProfError>(instrprof_error::zlib_unavailable);
 
       StringRef CompressedNameStrings(reinterpret_cast<const char *>(P),
                                       CompressedSize);
-      if (Error E = compression::profile::uncompress(CompressedNameStrings,
-                                                     UncompressedNameStrings,
-                                                     UncompressedSize)) {
+      if (Error E = compression::zlib::uncompress(CompressedNameStrings,
+                                                  UncompressedNameStrings,
+                                                  UncompressedSize)) {
         consumeError(std::move(E));
         return make_error<InstrProfError>(instrprof_error::uncompress_failed);
       }

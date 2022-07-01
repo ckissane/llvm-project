@@ -46,10 +46,6 @@ uint32_t crc32(StringRef Buffer);
 
 } // End of namespace zlib
 
-namespace profile = llvm::compression::zlib;
-
-namespace serialize = llvm::compression::zlib;
-
 } // End of namespace compression
 
 } // End of namespace llvm

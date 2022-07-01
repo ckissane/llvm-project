@@ -47,11 +47,11 @@ void CoverageFilenamesSectionWriter::write(raw_ostream &OS, bool Compress) {
   }
 
   SmallString<128> CompressedStr;
-  bool doCompression = Compress && compression::profile::isAvailable() &&
+  bool doCompression = Compress && compression::zlib::isAvailable() &&
                        DoInstrProfNameCompression;
   if (doCompression)
-    compression::profile::compress(FilenamesStr, CompressedStr,
-                                   compression::profile::BestSizeCompression);
+    compression::zlib::compress(FilenamesStr, CompressedStr,
+                                compression::zlib::BestSizeCompression);
 
   // ::= <num-filenames>
   //     <uncompressed-len>
