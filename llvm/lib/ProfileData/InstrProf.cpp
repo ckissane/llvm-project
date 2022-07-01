@@ -150,9 +150,8 @@ static std::string getInstrProfErrString(instrprof_error Err,
     OS << "empty raw profile file";
     break;
   case instrprof_error::zlib_unavailable:
-    OS << ("profile uses " + compression::profile::AlgorithmName +
-           " compression but the profile reader was built " + "without " +
-           compression::profile::AlgorithmName + " support");
+    OS << "profile uses zlib compression but the profile reader was built "
+          "without zlib support";
     break;
   }
 

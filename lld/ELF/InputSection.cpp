@@ -74,8 +74,8 @@ InputSectionBase::InputSectionBase(InputFile *file, uint64_t flags,
   // longer supported.
   if (flags & SHF_COMPRESSED) {
     if (!compression::zlib::isAvailable())
-      error(toString(file) + ": contains a compressed section, " + "but " +
-            compression::zlib::AlgorithmName + " is not available");
+      error(toString(file) + ": contains a compressed section, " +
+            "but zlib is not available");
     invokeELFT(parseCompressedHeader);
   }
 }

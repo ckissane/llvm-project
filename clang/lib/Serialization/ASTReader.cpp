@@ -1463,8 +1463,7 @@ bool ASTReader::ReadSLocEntry(int ID) {
 
     if (RecCode == SM_SLOC_BUFFER_BLOB_COMPRESSED) {
       if (!llvm::compression::serialize::isAvailable()) {
-        Error(llvm::compression::serialize::AlgorithmName +
-              " is not available");
+        Error("zlib is not available");
         return nullptr;
       }
       SmallString<0> Uncompressed;
