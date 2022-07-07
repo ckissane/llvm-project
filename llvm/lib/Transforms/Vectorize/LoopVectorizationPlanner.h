@@ -33,7 +33,6 @@ class LoopInfo;
 class LoopVectorizationLegality;
 class LoopVectorizationCostModel;
 class PredicatedScalarEvolution;
-class LoopVectorizationRequirements;
 class LoopVectorizeHints;
 class OptimizationRemarkEmitter;
 class TargetTransformInfo;
@@ -191,6 +190,10 @@ struct VectorizationFactor {
   /// Cost of the scalar loop.
   InstructionCost ScalarCost;
 
+  /// The minimum trip count required to make vectorization profitable, e.g. due
+  /// to runtime checks.
+  ElementCount MinProfitableTripCount;
+
   VectorizationFactor(ElementCount Width, InstructionCost Cost,
                       InstructionCost ScalarCost)
       : Width(Width), Cost(Cost), ScalarCost(ScalarCost) {}
@@ -268,8 +271,6 @@ class LoopVectorizationPlanner {
 
   const LoopVectorizeHints &Hints;
 
-  LoopVectorizationRequirements &Requirements;
-
   OptimizationRemarkEmitter *ORE;
 
   SmallVector<VPlanPtr, 4> VPlans;
@@ -285,10 +286,9 @@ public:
                            InterleavedAccessInfo &IAI,
                            PredicatedScalarEvolution &PSE,
                            const LoopVectorizeHints &Hints,
-                           LoopVectorizationRequirements &Requirements,
                            OptimizationRemarkEmitter *ORE)
       : OrigLoop(L), LI(LI), TLI(TLI), TTI(TTI), Legal(Legal), CM(CM), IAI(IAI),
-        PSE(PSE), Hints(Hints), Requirements(Requirements), ORE(ORE) {}
+        PSE(PSE), Hints(Hints), ORE(ORE) {}
 
   /// Plan how to best vectorize, return the best VF and its cost, or None if
   /// vectorization and interleaving should be avoided up front.
@@ -332,11 +332,6 @@ public:
   bool requiresTooManyRuntimeChecks() const;
 
 protected:
-  /// Collect the instructions from the original loop that would be trivially
-  /// dead in the vectorized loop if generated.
-  void collectTriviallyDeadInstructions(
-      SmallPtrSetImpl<Instruction *> &DeadInstructions);
-
   /// Build VPlans for power-of-2 VF's between \p MinVF and \p MaxVF inclusive,
   /// according to the information gathered by Legal when it checked if it is
   /// legal to vectorize the loop.

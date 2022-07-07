@@ -27887,11 +27887,14 @@ static SDValue LowerINTRINSIC_W_CHAIN(SDValue Op, const X86Subtarget &Subtarget,
   }
   // Read Performance Monitoring Counters.
   case RDPMC:
+  // Read Processor Register.
+  case RDPRU:
   // GetExtended Control Register.
   case XGETBV: {
     SmallVector<SDValue, 2> Results;
 
     // RDPMC uses ECX to select the index of the performance counter to read.
+    // RDPRU uses ECX to select the processor register to read.
     // XGETBV uses ECX to select the index of the XCR register to return.
     // The result is stored into registers EDX:EAX.
     expandIntrinsicWChainHelper(Op.getNode(), dl, DAG, IntrData->Opc0, X86::ECX,
@@ -29902,14 +29905,12 @@ static SDValue LowerShift(SDValue Op, const X86Subtarget &Subtarget,
         SDValue Amt01 = DAG.getBitcast(MVT::v8i16, Amt);
         SDValue Amt23 = DAG.getVectorShuffle(MVT::v8i16, dl, Amt01, Amt01,
                                              {4, 5, 6, 7, -1, -1, -1, -1});
-        Amt0 = DAG.getVectorShuffle(MVT::v8i16, dl, Amt01, Amt01,
-                                    {0, 1, 1, 1, -1, -1, -1, -1});
-        Amt1 = DAG.getVectorShuffle(MVT::v8i16, dl, Amt01, Amt01,
-                                    {2, 3, 3, 3, -1, -1, -1, -1});
-        Amt2 = DAG.getVectorShuffle(MVT::v8i16, dl, Amt23, Amt23,
-                                    {0, 1, 1, 1, -1, -1, -1, -1});
-        Amt3 = DAG.getVectorShuffle(MVT::v8i16, dl, Amt23, Amt23,
-                                    {2, 3, 3, 3, -1, -1, -1, -1});
+        SDValue Msk02 = getV4X86ShuffleImm8ForMask({0, 1, 1, 1}, dl, DAG);
+        SDValue Msk13 = getV4X86ShuffleImm8ForMask({2, 3, 3, 3}, dl, DAG);
+        Amt0 = DAG.getNode(X86ISD::PSHUFLW, dl, MVT::v8i16, Amt01, Msk02);
+        Amt1 = DAG.getNode(X86ISD::PSHUFLW, dl, MVT::v8i16, Amt01, Msk13);
+        Amt2 = DAG.getNode(X86ISD::PSHUFLW, dl, MVT::v8i16, Amt23, Msk02);
+        Amt3 = DAG.getNode(X86ISD::PSHUFLW, dl, MVT::v8i16, Amt23, Msk13);
       }
     }
 
@@ -30797,6 +30798,8 @@ X86TargetLowering::shouldExpandAtomicRMWInIR(AtomicRMWInst *AI) const {
   case AtomicRMWInst::UMin:
   case AtomicRMWInst::FAdd:
   case AtomicRMWInst::FSub:
+  case AtomicRMWInst::FMax:
+  case AtomicRMWInst::FMin:
     // These always require a non-trivial set of data operations on x86. We must
     // use a cmpxchg loop.
     return AtomicExpansionKind::CmpXChg;
@@ -32893,6 +32896,10 @@ void X86TargetLowering::ReplaceNodeResults(SDNode *N,
     case Intrinsic::x86_rdpmc:
       expandIntrinsicWChainHelper(N, dl, DAG, X86::RDPMC, X86::ECX, Subtarget,
                                   Results);
+      return;
+    case Intrinsic::x86_rdpru:
+      expandIntrinsicWChainHelper(N, dl, DAG, X86::RDPRU, X86::ECX, Subtarget,
+        Results);
       return;
     case Intrinsic::x86_xgetbv:
       expandIntrinsicWChainHelper(N, dl, DAG, X86::XGETBV, X86::ECX, Subtarget,
@@ -51654,9 +51661,13 @@ static SDValue combineVectorSizedSetCCEquality(SDNode *SetCC, SelectionDAG &DAG,
   // Use XOR (plus OR) and PTEST after SSE4.1 for 128/256-bit operands.
   // Use PCMPNEQ (plus OR) and KORTEST for 512-bit operands.
   // Otherwise use PCMPEQ (plus AND) and mask testing.
-  if ((OpSize == 128 && Subtarget.hasSSE2()) ||
-      (OpSize == 256 && Subtarget.hasAVX()) ||
-      (OpSize == 512 && Subtarget.useAVX512Regs())) {
+  bool NoImplicitFloatOps =
+      DAG.getMachineFunction().getFunction().hasFnAttribute(
+          Attribute::NoImplicitFloat);
+  if (!Subtarget.useSoftFloat() && !NoImplicitFloatOps &&
+      ((OpSize == 128 && Subtarget.hasSSE2()) ||
+       (OpSize == 256 && Subtarget.hasAVX()) ||
+       (OpSize == 512 && Subtarget.useAVX512Regs()))) {
     bool HasPT = Subtarget.hasSSE41();
 
     // PTEST and MOVMSK are slow on Knights Landing and Knights Mill and widened

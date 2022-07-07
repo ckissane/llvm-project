@@ -1082,6 +1082,16 @@ AArch64TargetLowering::AArch64TargetLowering(const TargetMachine &TM,
     setOperationAction(ISD::INTRINSIC_W_CHAIN, MVT::Other, Custom);
   }
 
+  // FIXME: Move lowering for more nodes here if those are common between
+  // SVE and SME.
+  if (Subtarget->hasSVE() || Subtarget->hasSME()) {
+    for (auto VT :
+         {MVT::nxv16i1, MVT::nxv8i1, MVT::nxv4i1, MVT::nxv2i1, MVT::nxv1i1}) {
+      setOperationAction(ISD::SPLAT_VECTOR, VT, Custom);
+      setOperationAction(ISD::EXTRACT_VECTOR_ELT, VT, Custom);
+    }
+  }
+
   if (Subtarget->hasSVE()) {
     for (auto VT : {MVT::nxv16i8, MVT::nxv8i16, MVT::nxv4i32, MVT::nxv2i64}) {
       setOperationAction(ISD::BITREVERSE, VT, Custom);
@@ -1162,14 +1172,12 @@ AArch64TargetLowering::AArch64TargetLowering(const TargetMachine &TM,
       setOperationAction(ISD::CONCAT_VECTORS, VT, Custom);
       setOperationAction(ISD::SELECT, VT, Custom);
       setOperationAction(ISD::SETCC, VT, Custom);
-      setOperationAction(ISD::SPLAT_VECTOR, VT, Custom);
       setOperationAction(ISD::TRUNCATE, VT, Custom);
       setOperationAction(ISD::VECREDUCE_AND, VT, Custom);
       setOperationAction(ISD::VECREDUCE_OR, VT, Custom);
       setOperationAction(ISD::VECREDUCE_XOR, VT, Custom);
 
       setOperationAction(ISD::SELECT_CC, VT, Expand);
-      setOperationAction(ISD::EXTRACT_VECTOR_ELT, VT, Custom);
       setOperationAction(ISD::INSERT_VECTOR_ELT, VT, Custom);
       setOperationAction(ISD::INSERT_SUBVECTOR, VT, Custom);
 
@@ -2429,6 +2437,23 @@ AArch64TargetLowering::EmitZero(MachineInstr &MI, MachineBasicBlock *BB) const {
   return BB;
 }
 
+MachineBasicBlock *
+AArch64TargetLowering::EmitAddVectorToTile(unsigned Opc, unsigned BaseReg,
+                                           MachineInstr &MI,
+                                           MachineBasicBlock *BB) const {
+  const TargetInstrInfo *TII = Subtarget->getInstrInfo();
+  MachineInstrBuilder MIB = BuildMI(*BB, MI, MI.getDebugLoc(), TII->get(Opc));
+
+  MIB.addReg(BaseReg + MI.getOperand(0).getImm(), RegState::Define);
+  MIB.addReg(BaseReg + MI.getOperand(0).getImm());
+  MIB.add(MI.getOperand(1)); // pn
+  MIB.add(MI.getOperand(2)); // pm
+  MIB.add(MI.getOperand(3)); // zn
+
+  MI.eraseFromParent(); // The pseudo is gone now.
+  return BB;
+}
+
 MachineBasicBlock *AArch64TargetLowering::EmitInstrWithCustomInserter(
     MachineInstr &MI, MachineBasicBlock *BB) const {
   switch (MI.getOpcode()) {
@@ -2561,6 +2586,14 @@ MachineBasicBlock *AArch64TargetLowering::EmitInstrWithCustomInserter(
                                   BB);
   case AArch64::ZERO_M_PSEUDO:
     return EmitZero(MI, BB);
+  case AArch64::ADDHA_MPPZ_PSEUDO_S:
+    return EmitAddVectorToTile(AArch64::ADDHA_MPPZ_S, AArch64::ZAS0, MI, BB);
+  case AArch64::ADDVA_MPPZ_PSEUDO_S:
+    return EmitAddVectorToTile(AArch64::ADDVA_MPPZ_S, AArch64::ZAS0, MI, BB);
+  case AArch64::ADDHA_MPPZ_PSEUDO_D:
+    return EmitAddVectorToTile(AArch64::ADDHA_MPPZ_D, AArch64::ZAD0, MI, BB);
+  case AArch64::ADDVA_MPPZ_PSEUDO_D:
+    return EmitAddVectorToTile(AArch64::ADDVA_MPPZ_D, AArch64::ZAD0, MI, BB);
   }
 }
 
@@ -4329,31 +4362,53 @@ SDValue AArch64TargetLowering::LowerMUL(SDValue Op, SelectionDAG &DAG) const {
 
 static inline SDValue getPTrue(SelectionDAG &DAG, SDLoc DL, EVT VT,
                                int Pattern) {
+  if (VT == MVT::nxv1i1 && Pattern == AArch64SVEPredPattern::all)
+    return DAG.getConstant(1, DL, MVT::nxv1i1);
   return DAG.getNode(AArch64ISD::PTRUE, DL, VT,
                      DAG.getTargetConstant(Pattern, DL, MVT::i32));
 }
 
-static SDValue lowerConvertToSVBool(SDValue Op, SelectionDAG &DAG) {
+SDValue AArch64TargetLowering::getSVEPredicateBitCast(EVT VT, SDValue Op,
+                                                      SelectionDAG &DAG) const {
   SDLoc DL(Op);
-  EVT OutVT = Op.getValueType();
-  SDValue InOp = Op.getOperand(1);
-  EVT InVT = InOp.getValueType();
+  EVT InVT = Op.getValueType();
+
+  assert(InVT.getVectorElementType() == MVT::i1 &&
+         VT.getVectorElementType() == MVT::i1 &&
+         "Expected a predicate-to-predicate bitcast");
+  assert(VT.isScalableVector() && isTypeLegal(VT) &&
+         InVT.isScalableVector() && isTypeLegal(InVT) &&
+         "Only expect to cast between legal scalable predicate types!");
 
   // Return the operand if the cast isn't changing type,
-  // i.e. <n x 16 x i1> -> <n x 16 x i1>
-  if (InVT == OutVT)
-    return InOp;
+  // e.g. <n x 16 x i1> -> <n x 16 x i1>
+  if (InVT == VT)
+    return Op;
 
-  SDValue Reinterpret =
-      DAG.getNode(AArch64ISD::REINTERPRET_CAST, DL, OutVT, InOp);
+  SDValue Reinterpret = DAG.getNode(AArch64ISD::REINTERPRET_CAST, DL, VT, Op);
 
-  // If the argument converted to an svbool is a ptrue or a comparison, the
-  // lanes introduced by the widening are zero by construction.
-  switch (InOp.getOpcode()) {
+  // We only have to zero the lanes if new lanes are being defined, e.g. when
+  // casting from <vscale x 2 x i1> to <vscale x 16 x i1>. If this is not the
+  // case (e.g. when casting from <vscale x 16 x i1> -> <vscale x 2 x i1>) then
+  // we can return here.
+  if (InVT.bitsGT(VT))
+    return Reinterpret;
+
+  // Check if the other lanes are already known to be zeroed by
+  // construction.
+  switch (Op.getOpcode()) {
+  default:
+    // We guarantee i1 splat_vectors to zero the other lanes by
+    // implementing it with ptrue and possibly a punpklo for nxv1i1.
+    if (ISD::isConstantSplatVectorAllOnes(Op.getNode()))
+      return Reinterpret;
+    break;
   case AArch64ISD::SETCC_MERGE_ZERO:
     return Reinterpret;
   case ISD::INTRINSIC_WO_CHAIN:
-    switch (InOp.getConstantOperandVal(0)) {
+    switch (Op.getConstantOperandVal(0)) {
+    default:
+      break;
     case Intrinsic::aarch64_sve_ptrue:
     case Intrinsic::aarch64_sve_cmpeq_wide:
     case Intrinsic::aarch64_sve_cmpne_wide:
@@ -4369,15 +4424,10 @@ static SDValue lowerConvertToSVBool(SDValue Op, SelectionDAG &DAG) {
     }
   }
 
-  // Splat vectors of one will generate ptrue instructions
-  if (ISD::isConstantSplatVectorAllOnes(InOp.getNode()))
-    return Reinterpret;
-
-  // Otherwise, zero the newly introduced lanes.
-  SDValue Mask = getPTrue(DAG, DL, InVT, AArch64SVEPredPattern::all);
-  SDValue MaskReinterpret =
-      DAG.getNode(AArch64ISD::REINTERPRET_CAST, DL, OutVT, Mask);
-  return DAG.getNode(ISD::AND, DL, OutVT, Reinterpret, MaskReinterpret);
+  // Zero the newly introduced lanes.
+  SDValue Mask = DAG.getConstant(1, DL, InVT);
+  Mask = DAG.getNode(AArch64ISD::REINTERPRET_CAST, DL, VT, Mask);
+  return DAG.getNode(ISD::AND, DL, VT, Reinterpret, Mask);
 }
 
 SDValue AArch64TargetLowering::LowerINTRINSIC_W_CHAIN(SDValue Op,
@@ -4546,10 +4596,9 @@ SDValue AArch64TargetLowering::LowerINTRINSIC_WO_CHAIN(SDValue Op,
   case Intrinsic::aarch64_sve_dupq_lane:
     return LowerDUPQLane(Op, DAG);
   case Intrinsic::aarch64_sve_convert_from_svbool:
-    return DAG.getNode(AArch64ISD::REINTERPRET_CAST, dl, Op.getValueType(),
-                       Op.getOperand(1));
+    return getSVEPredicateBitCast(Op.getValueType(), Op.getOperand(1), DAG);
   case Intrinsic::aarch64_sve_convert_to_svbool:
-    return lowerConvertToSVBool(Op, DAG);
+    return getSVEPredicateBitCast(MVT::nxv16i1, Op.getOperand(1), DAG);
   case Intrinsic::aarch64_sve_fneg:
     return DAG.getNode(AArch64ISD::FNEG_MERGE_PASSTHRU, dl, Op.getValueType(),
                        Op.getOperand(2), Op.getOperand(3), Op.getOperand(1));
@@ -14814,16 +14863,6 @@ static SDValue performANDCombine(SDNode *N,
   if (!DAG.getTargetLoweringInfo().isTypeLegal(VT))
     return SDValue();
 
-  // Although NEON has no EORV instruction, when only the least significant bit
-  // is required the operation is synonymous with ADDV.
-  if (LHS.getOpcode() == ISD::VECREDUCE_XOR && isOneConstant(RHS) &&
-      LHS.getOperand(0).getValueType().isFixedLengthVector() &&
-      LHS.hasOneUse()) {
-    SDLoc DL(N);
-    SDValue ADDV = DAG.getNode(ISD::VECREDUCE_ADD, DL, VT, LHS.getOperand(0));
-    return DAG.getNode(ISD::AND, DL, VT, ADDV, RHS);
-  }
-
   if (VT.isScalableVector())
     return performSVEAndCombine(N, DCI);
 
@@ -21045,7 +21084,7 @@ SDValue AArch64TargetLowering::LowerPredReductionToSVE(SDValue ReduceOp,
   default:
     return SDValue();
   case ISD::VECREDUCE_OR:
-    if (isAllActivePredicate(DAG, Pg))
+    if (isAllActivePredicate(DAG, Pg) && OpVT == MVT::nxv16i1)
       // The predicate can be 'Op' because
       // vecreduce_or(Op & <all true>) <=> vecreduce_or(Op).
       return getPTest(DAG, VT, Op, Op, AArch64CC::ANY_ACTIVE);
@@ -21058,6 +21097,11 @@ SDValue AArch64TargetLowering::LowerPredReductionToSVE(SDValue ReduceOp,
   case ISD::VECREDUCE_XOR: {
     SDValue ID =
         DAG.getTargetConstant(Intrinsic::aarch64_sve_cntp, DL, MVT::i64);
+    if (OpVT == MVT::nxv1i1) {
+      // Emulate a CNTP on .Q using .D and a different governing predicate.
+      Pg = DAG.getNode(AArch64ISD::REINTERPRET_CAST, DL, MVT::nxv2i1, Pg);
+      Op = DAG.getNode(AArch64ISD::REINTERPRET_CAST, DL, MVT::nxv2i1, Op);
+    }
     SDValue Cntp =
         DAG.getNode(ISD::INTRINSIC_WO_CHAIN, DL, MVT::i64, ID, Pg, Op);
     return DAG.getAnyExtOrTrunc(Cntp, DL, VT);
@@ -21464,21 +21508,16 @@ SDValue AArch64TargetLowering::getSVESafeBitCast(EVT VT, SDValue Op,
                                                  SelectionDAG &DAG) const {
   SDLoc DL(Op);
   EVT InVT = Op.getValueType();
-  const TargetLowering &TLI = DAG.getTargetLoweringInfo();
-  (void)TLI;
 
-  assert(VT.isScalableVector() && TLI.isTypeLegal(VT) &&
-         InVT.isScalableVector() && TLI.isTypeLegal(InVT) &&
+  assert(VT.isScalableVector() && isTypeLegal(VT) &&
+         InVT.isScalableVector() && isTypeLegal(InVT) &&
          "Only expect to cast between legal scalable vector types!");
-  assert((VT.getVectorElementType() == MVT::i1) ==
-             (InVT.getVectorElementType() == MVT::i1) &&
-         "Cannot cast between data and predicate scalable vector types!");
+  assert(VT.getVectorElementType() != MVT::i1 &&
+         InVT.getVectorElementType() != MVT::i1 &&
+         "For predicate bitcasts, use getSVEPredicateBitCast");
 
   if (InVT == VT)
     return Op;
-
-  if (VT.getVectorElementType() == MVT::i1)
-    return DAG.getNode(AArch64ISD::REINTERPRET_CAST, DL, VT, Op);
 
   EVT PackedVT = getPackedSVEVectorVT(VT.getVectorElementType());
   EVT PackedInVT = getPackedSVEVectorVT(InVT.getVectorElementType());

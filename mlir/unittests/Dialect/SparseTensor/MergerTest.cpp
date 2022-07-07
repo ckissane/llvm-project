@@ -1,10 +1,20 @@
 #include "mlir/Dialect/SparseTensor/Utils/Merger.h"
+#include "llvm/Support/Compiler.h"
 #include "gmock/gmock.h"
 #include "gtest/gtest.h"
 #include <memory>
 
 using namespace mlir;
 using namespace mlir::sparse_tensor;
+
+// Silence 'warning C4002: 'too many arguments for function-liked macro
+//                          invocation'
+// as MSVC handles ##__VA_ARGS__ differently as gcc/clang
+
+#if defined(_MSC_VER) && !defined(__clang__)
+#pragma warning(push)
+#pragma warning(disable : 4002)
+#endif
 
 namespace {
 
@@ -103,7 +113,7 @@ static std::shared_ptr<Pattern> tensorPattern(unsigned tensorNum) {
 }
 
 #define IMPL_BINOP_PATTERN(OP, KIND)                                           \
-  static std::shared_ptr<Pattern> OP##Pattern(                                 \
+  LLVM_ATTRIBUTE_UNUSED static std::shared_ptr<Pattern> OP##Pattern(           \
       const std::shared_ptr<Pattern> &e0,                                      \
       const std::shared_ptr<Pattern> &e1) {                                    \
     return std::make_shared<Pattern>(KIND, e0, e1);                            \
@@ -128,7 +138,7 @@ protected:
   }
 
 #define IMPL_BINOP_EXPR(OP, KIND)                                              \
-  unsigned OP##Expr(unsigned e0, unsigned e1) {                                \
+  LLVM_ATTRIBUTE_UNUSED unsigned OP##Expr(unsigned e0, unsigned e1) {          \
     return merger.addExp(KIND, e0, e1);                                        \
   }
 
@@ -625,3 +635,8 @@ FOREVERY_COMMON_CONJ_BINOP(IMPL_MERGER_TEST_OPTIMIZED_CONJ)
 #undef IMPL_MERGER_TEST_OPTIMIZED_CONJ
 
 // TODO: mult-dim tests
+
+// restore warning status
+#if defined(_MSC_VER) && !defined(__clang__)
+#pragma warning(pop)
+#endif
