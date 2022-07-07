@@ -22,7 +22,6 @@
 #endif
 
 using namespace llvm;
-
 using namespace llvm::compression;
 
 #if LLVM_ENABLE_ZLIB
