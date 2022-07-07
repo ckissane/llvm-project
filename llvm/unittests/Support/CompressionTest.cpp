@@ -18,7 +18,6 @@
 #include "gtest/gtest.h"
 
 using namespace llvm;
-
 using namespace llvm::compression;
 
 namespace {
