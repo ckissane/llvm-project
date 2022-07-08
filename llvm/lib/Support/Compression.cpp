@@ -112,8 +112,8 @@ void zstd::compress(StringRef InputBuffer,
   unsigned long CompressedBufferSize = ::ZSTD_compressBound(InputBuffer.size());
   CompressedBuffer.resize_for_overwrite(CompressedBufferSize);
   unsigned long CompressedSize = ::ZSTD_compress(
-      (Bytef *)CompressedBuffer.data(), CompressedBufferSize,
-      (const Bytef *)InputBuffer.data(), InputBuffer.size(), Level);
+      (char *)CompressedBuffer.data(), CompressedBufferSize,
+      (const char *)InputBuffer.data(), InputBuffer.size(), Level);
   if (ZSTD_isError(CompressedSize))
     report_bad_alloc_error("Allocation failed");
   // Tell MemorySanitizer that zstd output buffer is fully initialized.
@@ -125,10 +125,10 @@ void zstd::compress(StringRef InputBuffer,
 Error zstd::uncompress(StringRef InputBuffer, char *UncompressedBuffer,
                        size_t &UncompressedSize) {
   unsigned long long const rSize = ZSTD_getFrameContentSize(
-      (const Bytef *)InputBuffer.data(), InputBuffer.size());
+      (const char *)InputBuffer.data(), InputBuffer.size());
   size_t const Res =
-      ::ZSTD_decompress((Bytef *)UncompressedBuffer, rSize,
-                        (const Bytef *)InputBuffer.data(), InputBuffer.size());
+      ::ZSTD_decompress((char *)UncompressedBuffer, rSize,
+                        (const char *)InputBuffer.data(), InputBuffer.size());
   UncompressedSize = Res;
   // Tell MemorySanitizer that zstd output buffer is fully initialized.
   // This avoids a false report when running LLVM with uninstrumented ZLib.
