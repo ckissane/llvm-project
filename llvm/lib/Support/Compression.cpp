@@ -124,18 +124,19 @@ void zstd::compress(StringRef InputBuffer,
 
 Error zstd::uncompress(StringRef InputBuffer, char *UncompressedBuffer,
                        size_t &UncompressedSize) {
-  unsigned long long const rSize = ZSTD_getFrameContentSize(
+  unsigned long long const FrameContentSize = ZSTD_getFrameContentSize(
       (const char *)InputBuffer.data(), InputBuffer.size());
   size_t const Res =
-      ::ZSTD_decompress((char *)UncompressedBuffer, rSize,
+      ::ZSTD_decompress((char *)UncompressedBuffer, FrameContentSize,
                         (const char *)InputBuffer.data(), InputBuffer.size());
   UncompressedSize = Res;
   // Tell MemorySanitizer that zstd output buffer is fully initialized.
   // This avoids a false report when running LLVM with uninstrumented ZLib.
   __msan_unpoison(UncompressedBuffer, UncompressedSize);
-  return Res != rSize ? make_error<StringError>(ZSTD_getErrorName(Res),
-                                                inconvertibleErrorCode())
-                      : Error::success();
+  return Res != FrameContentSize
+             ? make_error<StringError>(ZSTD_getErrorName(Res),
+                                       inconvertibleErrorCode())
+             : Error::success();
 }
 
 Error zstd::uncompress(StringRef InputBuffer,
