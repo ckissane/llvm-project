@@ -11,6 +11,7 @@
 
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/StringRef.h"
+#include "llvm/Support/Compression.h"
 #include "llvm/Support/Error.h"
 
 namespace llvm {
@@ -44,10 +45,11 @@ public:
 private:
   Decompressor(StringRef Data);
 
-  Error consumeCompressedZLibHeader(bool Is64Bit, bool IsLittleEndian);
+  Error consumeCompressedSectionHeader(bool Is64Bit, bool IsLittleEndian);
 
   StringRef SectionData;
   uint64_t DecompressedSize;
+  compression::CompressionAlgorithm CompressionScheme;
 };
 
 } // end namespace object

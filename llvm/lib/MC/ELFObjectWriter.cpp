@@ -144,7 +144,8 @@ struct ELFWriter {
 
   uint64_t align(unsigned Alignment);
 
-  bool maybeWriteCompression(uint64_t Size,
+  bool maybeWriteCompression(DebugCompressionType CompressionType,
+                             uint64_t Size,
                              SmallVectorImpl<uint8_t> &CompressedContents,
                              unsigned Alignment);
 
@@ -819,22 +820,35 @@ MCSectionELF *ELFWriter::createRelocationSection(MCContext &Ctx,
 
 // Include the debug info compression header.
 bool ELFWriter::maybeWriteCompression(
-    uint64_t Size, SmallVectorImpl<uint8_t> &CompressedContents,
-    unsigned Alignment) {
+    DebugCompressionType CompressionType, uint64_t Size,
+    SmallVectorImpl<uint8_t> &CompressedContents, unsigned Alignment) {
   uint64_t HdrSize =
       is64Bit() ? sizeof(ELF::Elf32_Chdr) : sizeof(ELF::Elf64_Chdr);
   if (Size <= HdrSize + CompressedContents.size())
     return false;
+  int ElfCompressValue;
+  switch (CompressionType) {
+  case DebugCompressionType::Z:
+    ElfCompressValue = ELF::ELFCOMPRESS_ZLIB;
+    break;
+  case DebugCompressionType::ZStd:
+    ElfCompressValue = ELF::ELFCOMPRESS_ZSTD;
+    break;
+
+  default:
+    return false;
+  }
+
   // Platform specific header is followed by compressed data.
   if (is64Bit()) {
     // Write Elf64_Chdr header.
-    write(static_cast<ELF::Elf64_Word>(ELF::ELFCOMPRESS_ZLIB));
+    write(static_cast<ELF::Elf64_Word>(ElfCompressValue));
     write(static_cast<ELF::Elf64_Word>(0)); // ch_reserved field.
     write(static_cast<ELF::Elf64_Xword>(Size));
     write(static_cast<ELF::Elf64_Xword>(Alignment));
   } else {
     // Write Elf32_Chdr header otherwise.
-    write(static_cast<ELF::Elf32_Word>(ELF::ELFCOMPRESS_ZLIB));
+    write(static_cast<ELF::Elf32_Word>(ElfCompressValue));
     write(static_cast<ELF::Elf32_Word>(Size));
     write(static_cast<ELF::Elf32_Word>(Alignment));
   }
@@ -848,44 +862,57 @@ void ELFWriter::writeSectionData(const MCAssembler &Asm, MCSection &Sec,
 
   auto &MC = Asm.getContext();
   const auto &MAI = MC.getAsmInfo();
-
-  bool CompressionEnabled =
-      MAI->compressDebugSections() != DebugCompressionType::None;
+  const DebugCompressionType CompressionType = MAI->compressDebugSections();
+  bool CompressionEnabled = CompressionType != DebugCompressionType::None;
   if (!CompressionEnabled || !SectionName.startswith(".debug_")) {
     Asm.writeSectionData(W.OS, &Section, Layout);
     return;
   }
 
-  assert((MAI->compressDebugSections() == DebugCompressionType::Z ||
-          MAI->compressDebugSections() == DebugCompressionType::GNU) &&
-         "expected zlib or zlib-gnu style compression");
+  assert((CompressionType == DebugCompressionType::Z ||
+          CompressionType == DebugCompressionType::ZStd ||
+          CompressionType == DebugCompressionType::GNU) &&
+         "expected zlib or zstd or zlib-gnu style compression");
 
   SmallVector<char, 128> UncompressedData;
   raw_svector_ostream VecOS(UncompressedData);
   Asm.writeSectionData(VecOS, &Section, Layout);
 
   SmallVector<uint8_t, 128> CompressedContents;
-  compression::zlib::compress(
-      makeArrayRef(reinterpret_cast<uint8_t *>(UncompressedData.data()),
-                   UncompressedData.size()),
-      CompressedContents);
+  switch (CompressionType) {
+  case DebugCompressionType::Z:
+  case DebugCompressionType::GNU:
+    compression::ZlibCompressionAlgorithm().compress(
+        makeArrayRef(reinterpret_cast<uint8_t *>(UncompressedData.data()),
+                     UncompressedData.size()),
+        CompressedContents);
+    break;
+  case DebugCompressionType::ZStd:
+    compression::ZStdCompressionAlgorithm().compress(
+        makeArrayRef(reinterpret_cast<uint8_t *>(UncompressedData.data()),
+                     UncompressedData.size()),
+        CompressedContents);
+    break;
+  case DebugCompressionType::None:
+    break;
+  }
 
-  bool ZlibStyle = MAI->compressDebugSections() == DebugCompressionType::Z;
-  if (!maybeWriteCompression(UncompressedData.size(), CompressedContents,
-                             Sec.getAlignment())) {
+  bool GNUStyle = MAI->compressDebugSections() == DebugCompressionType::GNU;
+  if (!maybeWriteCompression(CompressionType, UncompressedData.size(),
+                             CompressedContents, Sec.getAlignment())) {
     W.OS << UncompressedData;
     return;
   }
 
-  if (ZlibStyle) {
-    // Set the compressed flag. That is zlib style.
+  if (GNUStyle) {
+    // Add "z" prefix to section name. This is zlib-gnu style.
+    MC.renameELFSection(&Section, (".z" + SectionName.drop_front(1)).str());
+  } else {
+    // Set the compressed flag. That is non zlib-gnu style.
     Section.setFlags(Section.getFlags() | ELF::SHF_COMPRESSED);
     // Alignment field should reflect the requirements of
     // the compressed section header.
     Section.setAlignment(is64Bit() ? Align(8) : Align(4));
-  } else {
-    // Add "z" prefix to section name. This is zlib-gnu style.
-    MC.renameELFSection(&Section, (".z" + SectionName.drop_front(1)).str());
   }
   W.OS << toStringRef(CompressedContents);
 }

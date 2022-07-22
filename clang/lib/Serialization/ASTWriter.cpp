@@ -866,6 +866,7 @@ void ASTWriter::WriteBlockInfoBlock() {
   RECORD(SM_SLOC_BUFFER_BLOB);
   RECORD(SM_SLOC_BUFFER_BLOB_COMPRESSED);
   RECORD(SM_SLOC_EXPANSION_ENTRY);
+  RECORD(SM_SLOC_BUFFER_BLOB_COMPRESSED_DYNAMIC);
 
   // Preprocessor Block.
   BLOCK(PREPROCESSOR_BLOCK);
@@ -1694,14 +1695,21 @@ static unsigned CreateSLocBufferAbbrev(llvm::BitstreamWriter &Stream) {
 /// Create an abbreviation for the SLocEntry that refers to a
 /// buffer's blob.
 static unsigned CreateSLocBufferBlobAbbrev(llvm::BitstreamWriter &Stream,
-                                           bool Compressed) {
+                                           bool Compressed,
+                                           bool CompressedDynamic) {
   using namespace llvm;
 
   auto Abbrev = std::make_shared<BitCodeAbbrev>();
-  Abbrev->Add(BitCodeAbbrevOp(Compressed ? SM_SLOC_BUFFER_BLOB_COMPRESSED
-                                         : SM_SLOC_BUFFER_BLOB));
-  if (Compressed)
+  Abbrev->Add(BitCodeAbbrevOp(CompressedDynamic
+                                  ? SM_SLOC_BUFFER_BLOB_COMPRESSED_DYNAMIC
+                                  : (Compressed ? SM_SLOC_BUFFER_BLOB_COMPRESSED
+                                                : SM_SLOC_BUFFER_BLOB)));
+
+  if (Compressed || CompressedDynamic)
     Abbrev->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::VBR, 8)); // Uncompressed size
+  if (CompressedDynamic) {
+    Abbrev->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::VBR, 8)); // Compression Scheme
+  }
   Abbrev->Add(BitCodeAbbrevOp(BitCodeAbbrevOp::Blob)); // Blob
   return Stream.EmitAbbrev(std::move(Abbrev));
 }
@@ -1995,17 +2003,36 @@ void ASTWriter::WriteHeaderSearch(const HeaderSearch &HS) {
 
 static void emitBlob(llvm::BitstreamWriter &Stream, StringRef Blob,
                      unsigned SLocBufferBlobCompressedAbbrv,
+                     unsigned SLocBufferBlobCompressedDynamicAbbrv,
                      unsigned SLocBufferBlobAbbrv) {
   using RecordDataType = ASTWriter::RecordData::value_type;
 
   // Compress the buffer if possible. We expect that almost all PCM
   // consumers will not want its contents.
-  SmallVector<uint8_t, 0> CompressedBuffer;
-  if (llvm::compression::zlib::isAvailable()) {
-    llvm::compression::zlib::compress(
-        llvm::arrayRefFromStringRef(Blob.drop_back(1)), CompressedBuffer);
-    RecordDataType Record[] = {SM_SLOC_BUFFER_BLOB_COMPRESSED, Blob.size() - 1};
-    Stream.EmitRecordWithBlob(SLocBufferBlobCompressedAbbrv, Record,
+  llvm::compression::CompressionAlgorithm CompressionScheme =
+      llvm::compression::ZStdCompressionAlgorithm();
+
+  if (CompressionScheme.supported()) {
+
+    SmallVector<uint8_t, 0> CompressedBuffer;
+
+    CompressionScheme.compress(llvm::arrayRefFromStringRef(Blob.drop_back(1)),
+                               CompressedBuffer);
+    // if our chosen CompressionAlgorithm happens to be zlib output old format
+    // for extra back compat
+    if (CompressionScheme.AlgorithmId ==
+        llvm::compression::ZlibCompressionAlgorithm().AlgorithmId) {
+
+      RecordDataType Record[] = {SM_SLOC_BUFFER_BLOB_COMPRESSED,
+                                 Blob.size() - 1};
+      Stream.EmitRecordWithBlob(SLocBufferBlobCompressedAbbrv, Record,
+                                llvm::toStringRef(CompressedBuffer));
+      return;
+    }
+    RecordDataType Record[] = {
+        SM_SLOC_BUFFER_BLOB_COMPRESSED_DYNAMIC, Blob.size() - 1,
+        static_cast<uint8_t>(CompressionScheme.AlgorithmId)};
+    Stream.EmitRecordWithBlob(SLocBufferBlobCompressedDynamicAbbrv, Record,
                               llvm::toStringRef(CompressedBuffer));
     return;
   }
@@ -2033,9 +2060,12 @@ void ASTWriter::WriteSourceManagerBlock(SourceManager &SourceMgr,
   // Abbreviations for the various kinds of source-location entries.
   unsigned SLocFileAbbrv = CreateSLocFileAbbrev(Stream);
   unsigned SLocBufferAbbrv = CreateSLocBufferAbbrev(Stream);
-  unsigned SLocBufferBlobAbbrv = CreateSLocBufferBlobAbbrev(Stream, false);
+  unsigned SLocBufferBlobAbbrv =
+      CreateSLocBufferBlobAbbrev(Stream, false, false);
   unsigned SLocBufferBlobCompressedAbbrv =
-      CreateSLocBufferBlobAbbrev(Stream, true);
+      CreateSLocBufferBlobAbbrev(Stream, true, false);
+  unsigned SLocBufferBlobCompressedDynamicAbbrv =
+      CreateSLocBufferBlobAbbrev(Stream, true, true);
   unsigned SLocExpansionAbbrv = CreateSLocExpansionAbbrev(Stream);
 
   // Write out the source location entry table. We skip the first
@@ -2135,7 +2165,7 @@ void ASTWriter::WriteSourceManagerBlock(SourceManager &SourceMgr,
           Buffer = llvm::MemoryBufferRef("<<<INVALID BUFFER>>>", "");
         StringRef Blob(Buffer->getBufferStart(), Buffer->getBufferSize() + 1);
         emitBlob(Stream, Blob, SLocBufferBlobCompressedAbbrv,
-                 SLocBufferBlobAbbrv);
+                 SLocBufferBlobCompressedDynamicAbbrv, SLocBufferBlobAbbrv);
       }
     } else {
       // The source location entry is a macro expansion.

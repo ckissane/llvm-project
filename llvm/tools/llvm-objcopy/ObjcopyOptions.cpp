@@ -728,6 +728,7 @@ objcopy::parseObjcopyOptions(ArrayRef<const char *> RawArgsArr,
           StringSwitch<DebugCompressionType>(
               InputArgs.getLastArgValue(OBJCOPY_compress_debug_sections_eq))
               .Case("zlib", DebugCompressionType::Z)
+              .Case("zstd", DebugCompressionType::ZStd)
               .Default(DebugCompressionType::None);
       if (Config.CompressionType == DebugCompressionType::None)
         return createStringError(
@@ -737,10 +738,26 @@ objcopy::parseObjcopyOptions(ArrayRef<const char *> RawArgsArr,
                 .str()
                 .c_str());
     }
-    if (!compression::zlib::isAvailable())
-      return createStringError(
-          errc::invalid_argument,
-          "LLVM was not compiled with LLVM_ENABLE_ZLIB: can not compress");
+    switch (Config.CompressionType) {
+    case DebugCompressionType::None:
+
+      break;
+    case DebugCompressionType::GNU:
+      llvm_unreachable("unexpected zlib-gnu");
+      break;
+    case DebugCompressionType::Z:
+      if (!compression::ZlibCompressionAlgorithm().supported())
+        return createStringError(
+            errc::invalid_argument,
+            "LLVM was not compiled with LLVM_ENABLE_ZLIB: can not compress");
+      break;
+    case DebugCompressionType::ZStd:
+      if (!compression::ZStdCompressionAlgorithm().supported())
+        return createStringError(
+            errc::invalid_argument,
+            "LLVM was not compiled with LLVM_ENABLE_ZSTD: can not compress");
+      break;
+    }
   }
 
   Config.AddGnuDebugLink = InputArgs.getLastArgValue(OBJCOPY_add_gnu_debuglink);
@@ -1002,10 +1019,11 @@ objcopy::parseObjcopyOptions(ArrayRef<const char *> RawArgsArr,
         "--decompress-debug-sections");
   }
 
-  if (Config.DecompressDebugSections && !compression::zlib::isAvailable())
-    return createStringError(
-        errc::invalid_argument,
-        "LLVM was not compiled with LLVM_ENABLE_ZLIB: cannot decompress");
+  // if (Config.DecompressDebugSections &&
+  //     !compression::ZlibCompressionAlgorithm().supported())
+  //   return createStringError(
+  //       errc::invalid_argument,
+  //       "LLVM was not compiled with LLVM_ENABLE_ZLIB: cannot decompress");
 
   if (Config.ExtractPartition && Config.ExtractMainPartition)
     return createStringError(errc::invalid_argument,

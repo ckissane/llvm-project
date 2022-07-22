@@ -726,7 +726,12 @@ enum SourceManagerRecordTypes {
 
   /// Describes a source location entry (SLocEntry) for a
   /// macro expansion.
-  SM_SLOC_EXPANSION_ENTRY = 5
+  SM_SLOC_EXPANSION_ENTRY = 5,
+
+  /// Describes a compressed blob that contains the data for
+  /// a buffer entry with a size header (like SM_SLOC_BUFFER_BLOB_COMPRESSED)
+  /// but also a part in the record to indicate which compression algorithm.
+  SM_SLOC_BUFFER_BLOB_COMPRESSED_DYNAMIC = 6,
 };
 
 /// Record types used within a preprocessor block.
