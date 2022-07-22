@@ -1461,9 +1461,13 @@ bool ASTReader::ReadSLocEntry(int ID) {
     }
     unsigned RecCode = MaybeRecCode.get();
 
-    if (RecCode == SM_SLOC_BUFFER_BLOB_COMPRESSED) {
-      uint8_t CompressionSchemeId = static_cast<uint8_t>(
-          llvm::compression::ZlibCompressionAlgorithm().AlgorithmId);
+    if (RecCode == SM_SLOC_BUFFER_BLOB_COMPRESSED ||
+        RecCode == SM_SLOC_BUFFER_BLOB_COMPRESSED_DYNAMIC) {
+      uint8_t CompressionSchemeId =
+          RecCode == SM_SLOC_BUFFER_BLOB_COMPRESSED
+              ? static_cast<uint8_t>(
+                    llvm::compression::ZlibCompressionAlgorithm().AlgorithmId)
+              : Record[1];
       llvm::compression::CompressionAlgorithm CompressionScheme =
           llvm::compression::CompressionAlgorithmFromId(CompressionSchemeId);
       if (!CompressionScheme.supported()) {
@@ -1480,6 +1484,7 @@ bool ASTReader::ReadSLocEntry(int ID) {
       }
       return llvm::MemoryBuffer::getMemBufferCopy(
           llvm::toStringRef(Uncompressed), Name);
+
     } else if (RecCode == SM_SLOC_BUFFER_BLOB) {
       return llvm::MemoryBuffer::getMemBuffer(Blob.drop_back(1), Name, true);
     } else {

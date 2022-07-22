@@ -28,6 +28,7 @@ enum class ExceptionHandling {
 enum class DebugCompressionType {
   None, ///< No compression
   Z,    ///< zlib style complession
+  ZStd, ///< zstd style complession
 };
 
 enum class EmitDwarfUnwindType {

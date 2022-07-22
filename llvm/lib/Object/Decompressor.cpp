@@ -42,6 +42,8 @@ Error Decompressor::consumeCompressedSectionHeader(bool Is64Bit,
       &Offset, Is64Bit ? sizeof(Elf64_Word) : sizeof(Elf32_Word));
   if (ELFCompressionSchemeId == ELFCOMPRESS_ZLIB) {
     CompressionScheme = compression::ZlibCompressionAlgorithm();
+  } else if (ELFCompressionSchemeId == ELFCOMPRESS_ZSTD) {
+    CompressionScheme = compression::ZStdCompressionAlgorithm();
   } else {
     return createError("unsupported compression type");
   }

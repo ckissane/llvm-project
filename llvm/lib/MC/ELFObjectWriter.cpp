@@ -144,7 +144,8 @@ struct ELFWriter {
 
   uint64_t align(unsigned Alignment);
 
-  bool maybeWriteCompression(uint32_t ChType, uint64_t Size,
+  bool maybeWriteCompression(DebugCompressionType CompressionType,
+                             uint64_t Size,
                              SmallVectorImpl<uint8_t> &CompressedContents,
                              unsigned Alignment);
 
@@ -819,12 +820,24 @@ MCSectionELF *ELFWriter::createRelocationSection(MCContext &Ctx,
 
 // Include the debug info compression header.
 bool ELFWriter::maybeWriteCompression(
-    uint32_t ChType, uint64_t Size,
+    DebugCompressionType CompressionType, uint64_t Size,
     SmallVectorImpl<uint8_t> &CompressedContents, unsigned Alignment) {
   uint64_t HdrSize =
       is64Bit() ? sizeof(ELF::Elf32_Chdr) : sizeof(ELF::Elf64_Chdr);
   if (Size <= HdrSize + CompressedContents.size())
     return false;
+  uint64_t ChType;
+  switch (CompressionType) {
+  case DebugCompressionType::Z:
+    ChType = ELF::ELFCOMPRESS_ZLIB;
+    break;
+  case DebugCompressionType::ZStd:
+    ChType = ELF::ELFCOMPRESS_ZSTD;
+    break;
+  default:
+    return false;
+  }
+
   // Platform specific header is followed by compressed data.
   if (is64Bit()) {
     // Write Elf64_Chdr header.
@@ -855,22 +868,34 @@ void ELFWriter::writeSectionData(const MCAssembler &Asm, MCSection &Sec,
     return;
   }
 
-  assert(CompressionType == DebugCompressionType::Z &&
-         "expected zlib style compression");
+  assert((CompressionType == DebugCompressionType::Z ||
+          CompressionType == DebugCompressionType::ZStd) &&
+         "expected zlib or zstd style compression");
 
   SmallVector<char, 128> UncompressedData;
   raw_svector_ostream VecOS(UncompressedData);
   Asm.writeSectionData(VecOS, &Section, Layout);
 
   SmallVector<uint8_t, 128> Compressed;
-  const uint32_t ChType = ELF::ELFCOMPRESS_ZLIB;
-  compression::ZlibCompressionAlgorithm().compress(
-      makeArrayRef(reinterpret_cast<uint8_t *>(UncompressedData.data()),
-                   UncompressedData.size()),
-      Compressed);
+  switch (CompressionType) {
+  case DebugCompressionType::Z:
+    compression::ZlibCompressionAlgorithm().compress(
+        makeArrayRef(reinterpret_cast<uint8_t *>(UncompressedData.data()),
+                     UncompressedData.size()),
+        Compressed);
+    break;
+  case DebugCompressionType::ZStd:
+    compression::ZStdCompressionAlgorithm().compress(
+        makeArrayRef(reinterpret_cast<uint8_t *>(UncompressedData.data()),
+                     UncompressedData.size()),
+        Compressed);
+    break;
+  case DebugCompressionType::None:
+    break;
+  }
 
-  if (!maybeWriteCompression(ChType, UncompressedData.size(), Compressed,
-                             Sec.getAlignment())) {
+  if (!maybeWriteCompression(CompressionType, UncompressedData.size(),
+                             Compressed, Sec.getAlignment())) {
     W.OS << UncompressedData;
     return;
   }

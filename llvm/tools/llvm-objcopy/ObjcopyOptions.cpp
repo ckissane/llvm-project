@@ -722,6 +722,7 @@ objcopy::parseObjcopyOptions(ArrayRef<const char *> RawArgsArr,
   if (const auto *A = InputArgs.getLastArg(OBJCOPY_compress_debug_sections)) {
     Config.CompressionType = StringSwitch<DebugCompressionType>(A->getValue())
                                  .Case("zlib", DebugCompressionType::Z)
+                                 .Case("zstd", DebugCompressionType::ZStd)
                                  .Default(DebugCompressionType::None);
     if (Config.CompressionType == DebugCompressionType::None)
       return createStringError(
@@ -736,6 +737,12 @@ objcopy::parseObjcopyOptions(ArrayRef<const char *> RawArgsArr,
         return createStringError(
             errc::invalid_argument,
             "LLVM was not compiled with LLVM_ENABLE_ZLIB: can not compress");
+      break;
+    case DebugCompressionType::ZStd:
+      if (!compression::ZStdCompressionAlgorithm().supported())
+        return createStringError(
+            errc::invalid_argument,
+            "LLVM was not compiled with LLVM_ENABLE_ZSTD: can not compress");
       break;
     }
   }
@@ -998,12 +1005,6 @@ objcopy::parseObjcopyOptions(ArrayRef<const char *> RawArgsArr,
         "cannot specify both --compress-debug-sections and "
         "--decompress-debug-sections");
   }
-
-  if (Config.DecompressDebugSections &&
-      !compression::ZlibCompressionAlgorithm().supported())
-    return createStringError(
-        errc::invalid_argument,
-        "LLVM was not compiled with LLVM_ENABLE_ZLIB: cannot decompress");
 
   if (Config.ExtractPartition && Config.ExtractMainPartition)
     return createStringError(errc::invalid_argument,

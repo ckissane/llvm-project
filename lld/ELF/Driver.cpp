@@ -958,6 +958,9 @@ static bool getCompressDebugSections(opt::InputArgList &args) {
   } else if (s == "zlib") {
     if (!compression::ZlibCompressionAlgorithm().supported())
       error("--compress-debug-sections: zlib is not available");
+  } else if (s == "zstd") {
+    if (!compression::ZStdCompressionAlgorithm().supported())
+      error("--compress-debug-sections: zstd is not available");
   } else {
     error("unknown --compress-debug-sections value: " + s);
   }
