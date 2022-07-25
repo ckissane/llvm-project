@@ -724,6 +724,7 @@ objcopy::parseObjcopyOptions(ArrayRef<const char *> RawArgsArr,
                                  .Case("zlib", DebugCompressionType::Z)
                                  .Case("zstd", DebugCompressionType::ZStd)
                                  .Default(DebugCompressionType::None);
+
     if (Config.CompressionType == DebugCompressionType::None)
       return createStringError(
           errc::invalid_argument,
