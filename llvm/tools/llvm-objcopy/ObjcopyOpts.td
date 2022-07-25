@@ -31,9 +31,11 @@ defm new_symbol_visibility : Eq<"new-symbol-visibility", "Visibility of "
 
 def compress_debug_sections
     : Joined<["--"], "compress-debug-sections=">,
-      MetaVarName<"format>,
+      MetaVarName<"format">,
       HelpText<"Compress DWARF debug sections using specified style. Supported "
                "formats: 'zlib', 'zstd'">;
+def : Flag<["--"], "compress-debug-sections">, Alias<compress_debug_sections>,
+      AliasArgs<["zlib"]>;
 def decompress_debug_sections : Flag<["--"], "decompress-debug-sections">,
                                 HelpText<"Decompress DWARF debug sections.">;
 defm split_dwo

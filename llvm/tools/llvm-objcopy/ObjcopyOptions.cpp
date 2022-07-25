@@ -719,31 +719,21 @@ objcopy::parseObjcopyOptions(ArrayRef<const char *> RawArgsArr,
     }
   }
 
-  if (auto Arg = InputArgs.getLastArg(OBJCOPY_compress_debug_sections,
-                                      OBJCOPY_compress_debug_sections_eq)) {
-    Config.CompressionType = DebugCompressionType::Z;
+  if (const auto *A = InputArgs.getLastArg(OBJCOPY_compress_debug_sections)) {
+    Config.CompressionType = StringSwitch<DebugCompressionType>(A->getValue())
+                                 .Case("zlib", DebugCompressionType::Z)
+                                 .Case("zstd", DebugCompressionType::ZStd)
+                                 .Default(DebugCompressionType::None);
 
-    if (Arg->getOption().getID() == OBJCOPY_compress_debug_sections_eq) {
-      Config.CompressionType =
-          StringSwitch<DebugCompressionType>(
-              InputArgs.getLastArgValue(OBJCOPY_compress_debug_sections_eq))
-              .Case("zlib", DebugCompressionType::Z)
-              .Case("zstd", DebugCompressionType::ZStd)
-              .Default(DebugCompressionType::None);
-      if (Config.CompressionType == DebugCompressionType::None)
-        return createStringError(
-            errc::invalid_argument,
-            "invalid or unsupported --compress-debug-sections format: %s",
-            InputArgs.getLastArgValue(OBJCOPY_compress_debug_sections_eq)
-                .str()
-                .c_str());
-    }
+    if (Config.CompressionType == DebugCompressionType::None)
+      return createStringError(
+          errc::invalid_argument,
+          "invalid or unsupported --compress-debug-sections format: %s",
+          A->getValue());
+
     switch (Config.CompressionType) {
     case DebugCompressionType::None:
 
-      break;
-    case DebugCompressionType::GNU:
-      llvm_unreachable("unexpected zlib-gnu");
       break;
     case DebugCompressionType::Z:
       if (!compression::ZlibCompressionAlgorithm().supported())

@@ -440,18 +440,15 @@ Error ELFSectionWriter<ELFT>::visit(const DecompressedSection &Sec) {
       Sec.OriginalData.slice(sizeof(Elf_Chdr_Impl<ELFT>));
   SmallVector<uint8_t, 128> DecompressedContent;
   DebugCompressionType CompressionType =
-      isDataGnuCompressed(Sec.OriginalData) ? DebugCompressionType::GNU
-      : reinterpret_cast<const Elf_Chdr_Impl<ELFT> *>(Sec.OriginalData.data())
+      reinterpret_cast<const Elf_Chdr_Impl<ELFT> *>(Sec.OriginalData.data())
                   ->ch_type == ELF::ELFCOMPRESS_ZSTD
           ? DebugCompressionType::ZStd
           : DebugCompressionType::Z;
 
   switch (CompressionType) {
   case DebugCompressionType::Z:
-  case DebugCompressionType::GNU:
     if (Error Err1 = compression::ZlibCompressionAlgorithm().decompress(
-            CompressedContent, DecompressedContent,
-            static_cast<size_t>(Sec.Size))) {
+            Compressed, DecompressedContent, static_cast<size_t>(Sec.Size))) {
       return createStringError(errc::invalid_argument,
                                "'" + Sec.Name +
                                    "': " + toString(std::move(Err1)));
@@ -459,8 +456,7 @@ Error ELFSectionWriter<ELFT>::visit(const DecompressedSection &Sec) {
     break;
   case DebugCompressionType::ZStd:
     if (Error Err = compression::ZStdCompressionAlgorithm().decompress(
-            CompressedContent, DecompressedContent,
-            static_cast<size_t>(Sec.Size))) {
+            Compressed, DecompressedContent, static_cast<size_t>(Sec.Size))) {
       return createStringError(errc::invalid_argument,
                                "'" + Sec.Name +
                                    "': " + toString(std::move(Err)));
@@ -545,7 +541,6 @@ CompressedSection::CompressedSection(const SectionBase &Sec,
 
   switch (CompressionType) {
   case DebugCompressionType::Z:
-  case DebugCompressionType::GNU:
     compression::ZlibCompressionAlgorithm().compress(OriginalData,
                                                      CompressedData);
     break;
