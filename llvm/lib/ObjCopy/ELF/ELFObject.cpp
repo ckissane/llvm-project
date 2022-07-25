@@ -441,9 +441,9 @@ Error ELFSectionWriter<ELFT>::visit(const DecompressedSection &Sec) {
   SmallVector<uint8_t, 128> DecompressedContent;
   DebugCompressionType CompressionType =
       reinterpret_cast<const Elf_Chdr_Impl<ELFT> *>(Sec.OriginalData.data())
-                  ->ch_type == ELF::ELFCOMPRESS_ZLIB
-          ? DebugCompressionType::Z
-          : DebugCompressionType::None;
+                  ->ch_type == ELF::ELFCOMPRESS_ZSTD
+          ? DebugCompressionType::ZStd
+          : DebugCompressionType::Z;
 
   switch (CompressionType) {
   case DebugCompressionType::Z:
