@@ -27,6 +27,71 @@
 using namespace llvm;
 using namespace llvm::compression;
 
+constexpr SupportCompressionType CompressionAlgorithm::AlgorithmId;
+constexpr StringRef CompressionAlgorithm::name;
+constexpr int CompressionAlgorithm::BestSpeedCompression;
+constexpr int CompressionAlgorithm::DefaultCompression;
+constexpr int CompressionAlgorithm::BestSizeCompression;
+
+bool CompressionAlgorithm::supported() { return false; };
+
+void CompressionAlgorithm::compress(ArrayRef<uint8_t> Input,
+                                    SmallVectorImpl<uint8_t> &CompressedBuffer,
+                                    int Level) {
+  llvm_unreachable("method:\"compress\" is unsupported for compression "
+                   "algorithm:\"base\", reason:\"can't call on base\"");
+};
+Error CompressionAlgorithm::decompress(ArrayRef<uint8_t> Input,
+                                       uint8_t *UncompressedBuffer,
+                                       size_t &UncompressedSize) {
+  llvm_unreachable("method:\"decompress\" is unsupported for compression "
+                   "algorithm:\"base\", reason:\"can't call on base\"");
+}
+
+constexpr SupportCompressionType NoneCompressionAlgorithm::AlgorithmId;
+constexpr StringRef NoneCompressionAlgorithm::name;
+constexpr int NoneCompressionAlgorithm::BestSpeedCompression;
+constexpr int NoneCompressionAlgorithm::DefaultCompression;
+constexpr int NoneCompressionAlgorithm::BestSizeCompression;
+
+bool NoneCompressionAlgorithm::supported() { return true; };
+
+void NoneCompressionAlgorithm::compress(
+    ArrayRef<uint8_t> Input, SmallVectorImpl<uint8_t> &CompressedBuffer,
+    int Level) {
+  unsigned long CompressedSize = Input.size();
+  CompressedBuffer.resize_for_overwrite(CompressedSize);
+  // SmallVectorImpl<uint8_t>()
+  CompressedBuffer.assign(SmallVector<uint8_t>(Input.begin(), Input.end()));
+
+  // Tell MemorySanitizer that zlib output buffer is fully initialized.
+  // This avoids a false report when running LLVM with uninstrumented ZLib.
+  __msan_unpoison(CompressedBuffer.data(), CompressedSize);
+  if (CompressedSize < CompressedBuffer.size())
+    CompressedBuffer.truncate(CompressedSize);
+};
+Error NoneCompressionAlgorithm::decompress(ArrayRef<uint8_t> Input,
+                                           uint8_t *UncompressedBuffer,
+                                           size_t &UncompressedSize) {
+  // Tell MemorySanitizer that zlib output buffer is fully initialized.
+  // This avoids a false report when running LLVM with uninstrumented ZLib.
+  if (UncompressedSize < Input.size()) {
+    return make_error<StringError>("decompressed buffer target size too small",
+                                   inconvertibleErrorCode());
+  }
+  UncompressedSize = Input.size();
+  memcpy(UncompressedBuffer, Input.data(), UncompressedSize);
+
+  __msan_unpoison(UncompressedBuffer, UncompressedSize);
+  return Error::success();
+}
+
+constexpr SupportCompressionType ZlibCompressionAlgorithm::AlgorithmId;
+constexpr StringRef ZlibCompressionAlgorithm::name;
+constexpr int ZlibCompressionAlgorithm::BestSpeedCompression;
+constexpr int ZlibCompressionAlgorithm::DefaultCompression;
+constexpr int ZlibCompressionAlgorithm::BestSizeCompression;
+
 #if LLVM_ENABLE_ZLIB
 
 static StringRef convertZlibCodeToString(int Code) {
@@ -45,10 +110,11 @@ static StringRef convertZlibCodeToString(int Code) {
   }
 }
 
-bool zlib::isAvailable() { return true; }
+bool ZlibCompressionAlgorithm::supported() { return true; };
 
-void zlib::compress(ArrayRef<uint8_t> Input,
-                    SmallVectorImpl<uint8_t> &CompressedBuffer, int Level) {
+void ZlibCompressionAlgorithm::compress(
+    ArrayRef<uint8_t> Input, SmallVectorImpl<uint8_t> &CompressedBuffer,
+    int Level) {
   unsigned long CompressedSize = ::compressBound(Input.size());
   CompressedBuffer.resize_for_overwrite(CompressedSize);
   int Res = ::compress2((Bytef *)CompressedBuffer.data(), &CompressedSize,
@@ -61,10 +127,10 @@ void zlib::compress(ArrayRef<uint8_t> Input,
   __msan_unpoison(CompressedBuffer.data(), CompressedSize);
   if (CompressedSize < CompressedBuffer.size())
     CompressedBuffer.truncate(CompressedSize);
-}
-
-Error zlib::uncompress(ArrayRef<uint8_t> Input, uint8_t *UncompressedBuffer,
-                       size_t &UncompressedSize) {
+};
+Error ZlibCompressionAlgorithm::decompress(ArrayRef<uint8_t> Input,
+                                           uint8_t *UncompressedBuffer,
+                                           size_t &UncompressedSize) {
   int Res =
       ::uncompress((Bytef *)UncompressedBuffer, (uLongf *)&UncompressedSize,
                    (const Bytef *)Input.data(), Input.size());
@@ -74,42 +140,41 @@ Error zlib::uncompress(ArrayRef<uint8_t> Input, uint8_t *UncompressedBuffer,
   return Res ? make_error<StringError>(convertZlibCodeToString(Res),
                                        inconvertibleErrorCode())
              : Error::success();
-}
-
-Error zlib::uncompress(ArrayRef<uint8_t> Input,
-                       SmallVectorImpl<uint8_t> &UncompressedBuffer,
-                       size_t UncompressedSize) {
-  UncompressedBuffer.resize_for_overwrite(UncompressedSize);
-  Error E =
-      zlib::uncompress(Input, UncompressedBuffer.data(), UncompressedSize);
-  if (UncompressedSize < UncompressedBuffer.size())
-    UncompressedBuffer.truncate(UncompressedSize);
-  return E;
-}
+};
 
 #else
-bool zlib::isAvailable() { return false; }
-void zlib::compress(ArrayRef<uint8_t> Input,
-                    SmallVectorImpl<uint8_t> &CompressedBuffer, int Level) {
-  llvm_unreachable("zlib::compress is unavailable");
-}
-Error zlib::uncompress(ArrayRef<uint8_t> Input, uint8_t *UncompressedBuffer,
-                       size_t &UncompressedSize) {
-  llvm_unreachable("zlib::uncompress is unavailable");
-}
-Error zlib::uncompress(ArrayRef<uint8_t> Input,
-                       SmallVectorImpl<uint8_t> &UncompressedBuffer,
-                       size_t UncompressedSize) {
-  llvm_unreachable("zlib::uncompress is unavailable");
-}
+bool ZlibCompressionAlgorithm::supported() { return false; };
+
+void ZlibCompressionAlgorithm::compress(
+    ArrayRef<uint8_t> Input, SmallVectorImpl<uint8_t> &CompressedBuffer,
+    int Level) {
+  llvm_unreachable(
+      "method:\"compress\" is unsupported for compression algorithm:\"zlib\", "
+      "reason:\"llvm not compiled with zlib support\"");
+};
+Error ZlibCompressionAlgorithm::decompress(ArrayRef<uint8_t> Input,
+                                           uint8_t *UncompressedBuffer,
+                                           size_t &UncompressedSize) {
+  llvm_unreachable(
+      "method:\"decompress\" is unsupported for compression "
+      "algorithm:\"zlib\", reason:\"llvm not compiled with zlib support\"");
+};
+
 #endif
+
+constexpr SupportCompressionType ZStdCompressionAlgorithm::AlgorithmId;
+constexpr StringRef ZStdCompressionAlgorithm::name;
+constexpr int ZStdCompressionAlgorithm::BestSpeedCompression;
+constexpr int ZStdCompressionAlgorithm::DefaultCompression;
+constexpr int ZStdCompressionAlgorithm::BestSizeCompression;
 
 #if LLVM_ENABLE_ZSTD
 
-bool zstd::isAvailable() { return true; }
+bool ZStdCompressionAlgorithm::supported() { return true; };
 
-void zstd::compress(ArrayRef<uint8_t> Input,
-                    SmallVectorImpl<uint8_t> &CompressedBuffer, int Level) {
+void ZStdCompressionAlgorithm::compress(
+    ArrayRef<uint8_t> Input, SmallVectorImpl<uint8_t> &CompressedBuffer,
+    int Level) {
   unsigned long CompressedBufferSize = ::ZSTD_compressBound(Input.size());
   CompressedBuffer.resize_for_overwrite(CompressedBufferSize);
   unsigned long CompressedSize =
@@ -122,10 +187,10 @@ void zstd::compress(ArrayRef<uint8_t> Input,
   __msan_unpoison(CompressedBuffer.data(), CompressedSize);
   if (CompressedSize < CompressedBuffer.size())
     CompressedBuffer.truncate(CompressedSize);
-}
-
-Error zstd::uncompress(ArrayRef<uint8_t> Input, uint8_t *UncompressedBuffer,
-                       size_t &UncompressedSize) {
+};
+Error ZStdCompressionAlgorithm::decompress(ArrayRef<uint8_t> Input,
+                                           uint8_t *UncompressedBuffer,
+                                           size_t &UncompressedSize) {
   const size_t Res =
       ::ZSTD_decompress(UncompressedBuffer, UncompressedSize,
                         (const uint8_t *)Input.data(), Input.size());
@@ -136,32 +201,47 @@ Error zstd::uncompress(ArrayRef<uint8_t> Input, uint8_t *UncompressedBuffer,
   return ZSTD_isError(Res) ? make_error<StringError>(ZSTD_getErrorName(Res),
                                                      inconvertibleErrorCode())
                            : Error::success();
-}
-
-Error zstd::uncompress(ArrayRef<uint8_t> Input,
-                       SmallVectorImpl<uint8_t> &UncompressedBuffer,
-                       size_t UncompressedSize) {
-  UncompressedBuffer.resize_for_overwrite(UncompressedSize);
-  Error E =
-      zstd::uncompress(Input, UncompressedBuffer.data(), UncompressedSize);
-  if (UncompressedSize < UncompressedBuffer.size())
-    UncompressedBuffer.truncate(UncompressedSize);
-  return E;
-}
+};
 
 #else
-bool zstd::isAvailable() { return false; }
-void zstd::compress(ArrayRef<uint8_t> Input,
-                    SmallVectorImpl<uint8_t> &CompressedBuffer, int Level) {
-  llvm_unreachable("zstd::compress is unavailable");
-}
-Error zstd::uncompress(ArrayRef<uint8_t> Input, uint8_t *UncompressedBuffer,
-                       size_t &UncompressedSize) {
-  llvm_unreachable("zstd::uncompress is unavailable");
-}
-Error zstd::uncompress(ArrayRef<uint8_t> Input,
-                       SmallVectorImpl<uint8_t> &UncompressedBuffer,
-                       size_t UncompressedSize) {
-  llvm_unreachable("zstd::uncompress is unavailable");
-}
+bool ZStdCompressionAlgorithm::supported() { return false; };
+
+void ZStdCompressionAlgorithm::compress(
+    ArrayRef<uint8_t> Input, SmallVectorImpl<uint8_t> &CompressedBuffer,
+    int Level) {
+  llvm_unreachable(
+      "method:\"compress\" is unsupported for compression algorithm:\"zstd\", "
+      "reason:\"llvm not compiled with zstd support\"");
+};
+Error ZStdCompressionAlgorithm::decompress(ArrayRef<uint8_t> Input,
+                                           uint8_t *UncompressedBuffer,
+                                           size_t &UncompressedSize) {
+  llvm_unreachable(
+      "method:\"decompress\" is unsupported for compression "
+      "algorithm:\"zstd\", reason:\"llvm not compiled with zstd support\"");
+};
+
 #endif
+
+llvm::compression::CompressionAlgorithm
+llvm::compression::CompressionAlgorithmFromId(uint8_t CompressionSchemeId) {
+  llvm::compression::CompressionAlgorithm CompressionScheme =
+      llvm::compression::CompressionAlgorithm();
+  switch (CompressionSchemeId) {
+  case static_cast<uint8_t>(
+      llvm::compression::NoneCompressionAlgorithm().AlgorithmId):
+    CompressionScheme = llvm::compression::NoneCompressionAlgorithm();
+    break;
+  case static_cast<uint8_t>(
+      llvm::compression::ZlibCompressionAlgorithm().AlgorithmId):
+    CompressionScheme = llvm::compression::ZlibCompressionAlgorithm();
+    break;
+  case static_cast<uint8_t>(
+      llvm::compression::ZStdCompressionAlgorithm().AlgorithmId):
+    CompressionScheme = llvm::compression::ZStdCompressionAlgorithm();
+    break;
+  default:
+    break;
+  }
+  return CompressionScheme;
+}

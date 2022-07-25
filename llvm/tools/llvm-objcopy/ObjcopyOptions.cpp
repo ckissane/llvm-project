@@ -728,10 +728,16 @@ objcopy::parseObjcopyOptions(ArrayRef<const char *> RawArgsArr,
           errc::invalid_argument,
           "invalid or unsupported --compress-debug-sections format: %s",
           A->getValue());
-    if (!compression::zlib::isAvailable())
-      return createStringError(
-          errc::invalid_argument,
-          "LLVM was not compiled with LLVM_ENABLE_ZLIB: can not compress");
+    switch (Config.CompressionType) {
+    case DebugCompressionType::None:
+      break;
+    case DebugCompressionType::Z:
+      if (!compression::ZlibCompressionAlgorithm().supported())
+        return createStringError(
+            errc::invalid_argument,
+            "LLVM was not compiled with LLVM_ENABLE_ZLIB: can not compress");
+      break;
+    }
   }
 
   Config.AddGnuDebugLink = InputArgs.getLastArgValue(OBJCOPY_add_gnu_debuglink);
@@ -993,7 +999,8 @@ objcopy::parseObjcopyOptions(ArrayRef<const char *> RawArgsArr,
         "--decompress-debug-sections");
   }
 
-  if (Config.DecompressDebugSections && !compression::zlib::isAvailable())
+  if (Config.DecompressDebugSections &&
+      !compression::ZlibCompressionAlgorithm().supported())
     return createStringError(
         errc::invalid_argument,
         "LLVM was not compiled with LLVM_ENABLE_ZLIB: cannot decompress");
