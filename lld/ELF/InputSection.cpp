@@ -118,7 +118,8 @@ void InputSectionBase::uncompress() const {
     uncompressedBuf = bAlloc().Allocate<uint8_t>(size);
   }
 
-  if (Error e = compression::ZlibCompressionAlgorithm().decompress(rawData, uncompressedBuf, size))
+  if (Error e = compression::ZlibCompressionAlgorithm().decompress(
+          rawData, uncompressedBuf, size))
     fatal(toString(this) +
           ": uncompress failed: " + llvm::toString(std::move(e)));
   rawData = makeArrayRef(uncompressedBuf, size);

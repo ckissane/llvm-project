@@ -2005,12 +2005,11 @@ static void emitBlob(llvm::BitstreamWriter &Stream, StringRef Blob,
 
   if (CompressionScheme.supported()) {
 
-  SmallVector<uint8_t, 0> CompressedBuffer;
+    SmallVector<uint8_t, 0> CompressedBuffer;
 
     CompressionScheme.compress(llvm::arrayRefFromStringRef(Blob.drop_back(1)),
                                CompressedBuffer);
-    RecordDataType Record[] = {SM_SLOC_BUFFER_BLOB_COMPRESSED,
-                                Blob.size() - 1};
+    RecordDataType Record[] = {SM_SLOC_BUFFER_BLOB_COMPRESSED, Blob.size() - 1};
     Stream.EmitRecordWithBlob(SLocBufferBlobCompressedAbbrv, Record,
                               llvm::toStringRef(CompressedBuffer));
     return;

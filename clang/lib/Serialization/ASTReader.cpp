@@ -1462,8 +1462,8 @@ bool ASTReader::ReadSLocEntry(int ID) {
     unsigned RecCode = MaybeRecCode.get();
 
     if (RecCode == SM_SLOC_BUFFER_BLOB_COMPRESSED) {
-      uint8_t CompressionSchemeId =static_cast<uint8_t>(
-                    llvm::compression::ZlibCompressionAlgorithm().AlgorithmId);
+      uint8_t CompressionSchemeId = static_cast<uint8_t>(
+          llvm::compression::ZlibCompressionAlgorithm().AlgorithmId);
       llvm::compression::CompressionAlgorithm CompressionScheme =
           llvm::compression::CompressionAlgorithmFromId(CompressionSchemeId);
       if (!CompressionScheme.supported()) {
