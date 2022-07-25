@@ -848,15 +848,14 @@ void ELFWriter::writeSectionData(const MCAssembler &Asm, MCSection &Sec,
 
   auto &MC = Asm.getContext();
   const auto &MAI = MC.getAsmInfo();
-
-  bool CompressionEnabled =
-      MAI->compressDebugSections() != DebugCompressionType::None;
+  const DebugCompressionType CompressionType = MAI->compressDebugSections();
+  bool CompressionEnabled = CompressionType != DebugCompressionType::None;
   if (!CompressionEnabled || !SectionName.startswith(".debug_")) {
     Asm.writeSectionData(W.OS, &Section, Layout);
     return;
   }
 
-  assert(MAI->compressDebugSections() == DebugCompressionType::Z &&
+  assert(CompressionType == DebugCompressionType::Z &&
          "expected zlib style compression");
 
   SmallVector<char, 128> UncompressedData;
@@ -865,7 +864,7 @@ void ELFWriter::writeSectionData(const MCAssembler &Asm, MCSection &Sec,
 
   SmallVector<uint8_t, 128> Compressed;
   const uint32_t ChType = ELF::ELFCOMPRESS_ZLIB;
-  compression::zlib::compress(
+  compression::ZlibCompressionAlgorithm().compress(
       makeArrayRef(reinterpret_cast<uint8_t *>(UncompressedData.data()),
                    UncompressedData.size()),
       Compressed);

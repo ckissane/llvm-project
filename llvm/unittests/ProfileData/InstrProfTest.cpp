@@ -1148,7 +1148,8 @@ TEST_P(MaybeSparseInstrProfTest, instr_prof_symtab_compression_test) {
     std::string FuncNameStrings1;
     EXPECT_THAT_ERROR(collectPGOFuncNameStrings(
                           FuncNames1,
-                          (DoCompression && compression::zlib::isAvailable()),
+                          (DoCompression &&
+                           compression::ZlibCompressionAlgorithm().supported()),
                           FuncNameStrings1),
                       Succeeded());
 
@@ -1156,7 +1157,8 @@ TEST_P(MaybeSparseInstrProfTest, instr_prof_symtab_compression_test) {
     std::string FuncNameStrings2;
     EXPECT_THAT_ERROR(collectPGOFuncNameStrings(
                           FuncNames2,
-                          (DoCompression && compression::zlib::isAvailable()),
+                          (DoCompression &&
+                           compression::ZlibCompressionAlgorithm().supported()),
                           FuncNameStrings2),
                       Succeeded());
 

@@ -439,10 +439,25 @@ Error ELFSectionWriter<ELFT>::visit(const DecompressedSection &Sec) {
   ArrayRef<uint8_t> Compressed =
       Sec.OriginalData.slice(sizeof(Elf_Chdr_Impl<ELFT>));
   SmallVector<uint8_t, 128> DecompressedContent;
-  if (Error Err = compression::zlib::uncompress(Compressed, DecompressedContent,
-                                                static_cast<size_t>(Sec.Size)))
-    return createStringError(errc::invalid_argument,
-                             "'" + Sec.Name + "': " + toString(std::move(Err)));
+  DebugCompressionType CompressionType =
+      reinterpret_cast<const Elf_Chdr_Impl<ELFT> *>(Sec.OriginalData.data())
+                  ->ch_type == ELF::ELFCOMPRESS_ZLIB
+          ? DebugCompressionType::Z
+          : DebugCompressionType::None;
+
+  switch (CompressionType) {
+  case DebugCompressionType::Z:
+    if (Error Err1 = compression::ZlibCompressionAlgorithm().decompress(
+            Compressed, DecompressedContent, static_cast<size_t>(Sec.Size))) {
+      return createStringError(errc::invalid_argument,
+                               "'" + Sec.Name +
+                                   "': " + toString(std::move(Err1)));
+    }
+    break;
+  case DebugCompressionType::None:
+    llvm_unreachable("unexpected DebugCompressionType::None");
+    break;
+  }
 
   uint8_t *Buf = reinterpret_cast<uint8_t *>(Out.getBufferStart()) + Sec.Offset;
   std::copy(DecompressedContent.begin(), DecompressedContent.end(), Buf);
@@ -512,7 +527,14 @@ CompressedSection::CompressedSection(const SectionBase &Sec,
                                      DebugCompressionType CompressionType)
     : SectionBase(Sec), CompressionType(CompressionType),
       DecompressedSize(Sec.OriginalData.size()), DecompressedAlign(Sec.Align) {
-  compression::zlib::compress(OriginalData, CompressedData);
+  switch (CompressionType) {
+  case DebugCompressionType::Z:
+    compression::ZlibCompressionAlgorithm().compress(OriginalData,
+                                                     CompressedData);
+    break;
+  case DebugCompressionType::None:
+    break;
+  }
 
   assert(CompressionType != DebugCompressionType::None);
   Flags |= ELF::SHF_COMPRESSED;

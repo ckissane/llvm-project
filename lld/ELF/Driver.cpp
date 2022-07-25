@@ -953,12 +953,15 @@ template <class ELFT> static void readCallGraphsFromObjectFiles() {
 
 static bool getCompressDebugSections(opt::InputArgList &args) {
   StringRef s = args.getLastArgValue(OPT_compress_debug_sections, "none");
-  if (s == "none")
+  if (s == "none") {
     return false;
-  if (s != "zlib")
+  } else if (s == "zlib") {
+    if (!compression::ZlibCompressionAlgorithm().supported())
+      error("--compress-debug-sections: zlib is not available");
+  } else {
     error("unknown --compress-debug-sections value: " + s);
-  if (!compression::zlib::isAvailable())
-    error("--compress-debug-sections: zlib is not available");
+  }
+
   return true;
 }
 
