@@ -36,6 +36,7 @@
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Support/Casting.h"
 #include "llvm/Support/raw_ostream.h"
+#include <iterator>
 #include <string>
 #include <vector>
 
@@ -786,56 +787,62 @@ private:
   // inspects the given callee with the given args to check whether it
   // contains Parameters, and sets Info accordingly.
   void handleCall(FunctionDecl *Callee, typename CallExpr::arg_range Args) {
+    // Skip functions with less parameters, they can't be the target.
+    if (Callee->parameters().size() < Parameters.size())
+      return;
     if (std::any_of(Args.begin(), Args.end(), [](const Expr *E) {
           return dyn_cast<PackExpansionExpr>(E) != nullptr;
         })) {
       return;
     }
-    auto OptPackLocation = findPack(Args);
-    if (OptPackLocation) {
-      size_t PackLocation = OptPackLocation.value();
-      ArrayRef<ParmVarDecl *> MatchingParams =
-          Callee->parameters().slice(PackLocation, Parameters.size());
-      // Check whether the function has a parameter pack as the last template
-      // parameter
-      if (const auto *TTPT = getFunctionPackType(Callee)) {
-        // In this case: Separate the parameters into head, pack and tail
-        auto IsExpandedPack = [&](const ParmVarDecl *P) {
-          return getUnderylingPackType(P) == TTPT;
-        };
-        ForwardingInfo FI;
-        FI.Head = MatchingParams.take_until(IsExpandedPack);
-        FI.Pack = MatchingParams.drop_front(FI.Head.size())
-                      .take_while(IsExpandedPack);
-        FI.Tail = MatchingParams.drop_front(FI.Head.size() + FI.Pack.size());
-        FI.PackTarget = Callee;
-        Info = FI;
-        return;
-      }
-      // Default case: assume all parameters were fully resolved
+    auto PackLocation = findPack(Args);
+    if (!PackLocation)
+      return;
+    ArrayRef<ParmVarDecl *> MatchingParams =
+        Callee->parameters().slice(*PackLocation, Parameters.size());
+    // Check whether the function has a parameter pack as the last template
+    // parameter
+    if (const auto *TTPT = getFunctionPackType(Callee)) {
+      // In this case: Separate the parameters into head, pack and tail
+      auto IsExpandedPack = [&](const ParmVarDecl *P) {
+        return getUnderylingPackType(P) == TTPT;
+      };
       ForwardingInfo FI;
-      FI.Head = MatchingParams;
+      FI.Head = MatchingParams.take_until(IsExpandedPack);
+      FI.Pack =
+          MatchingParams.drop_front(FI.Head.size()).take_while(IsExpandedPack);
+      FI.Tail = MatchingParams.drop_front(FI.Head.size() + FI.Pack.size());
+      FI.PackTarget = Callee;
       Info = FI;
+      return;
     }
+    // Default case: assume all parameters were fully resolved
+    ForwardingInfo FI;
+    FI.Head = MatchingParams;
+    Info = FI;
   }
 
   // Returns the beginning of the expanded pack represented by Parameters
   // in the given arguments, if it is there.
   llvm::Optional<size_t> findPack(typename CallExpr::arg_range Args) {
     // find the argument directly referring to the first parameter
-    auto FirstMatch = std::find_if(Args.begin(), Args.end(), [&](Expr *Arg) {
-      const auto *RefArg = unwrapArgument(Arg);
-      if (RefArg) {
-        if (Parameters.front() == dyn_cast<ParmVarDecl>(RefArg->getDecl())) {
-          return true;
-        }
+    assert(Parameters.size() <= static_cast<size_t>(llvm::size(Args)));
+    for (auto Begin = Args.begin(), End = Args.end() - Parameters.size() + 1;
+         Begin != End; ++Begin) {
+      if (const auto *RefArg = unwrapForward(*Begin)) {
+        if (Parameters.front() != RefArg->getDecl())
+          continue;
+        // Check that this expands all the way until the last parameter.
+        // It's enough to look at the last parameter, because it isn't possible
+        // to expand without expanding all of them.
+        auto ParamEnd = Begin + Parameters.size() - 1;
+        RefArg = unwrapForward(*ParamEnd);
+        if (!RefArg || Parameters.back() != RefArg->getDecl())
+          continue;
+        return std::distance(Args.begin(), Begin);
       }
-      return false;
-    });
-    if (FirstMatch == Args.end()) {
-      return llvm::None;
     }
-    return std::distance(Args.begin(), FirstMatch);
+    return llvm::None;
   }
 
   static FunctionDecl *getCalleeDeclOrUniqueOverload(CallExpr *E) {
@@ -847,7 +854,7 @@ private:
       }
     }
     // Ignore the callee if the number of arguments is wrong (deal with va_args)
-    if (Callee->getNumParams() == E->getNumArgs())
+    if (Callee && Callee->getNumParams() == E->getNumArgs())
       return Callee;
     return nullptr;
   }
@@ -873,31 +880,23 @@ private:
     return MatchingDecl;
   }
 
-  // Removes any implicit cast expressions around the given expression.
-  static const Expr *unwrapImplicitCast(const Expr *E) {
-    while (const auto *Cast = dyn_cast<ImplicitCastExpr>(E)) {
-      E = Cast->getSubExpr();
-    }
-    return E;
-  }
-
-  // Maps std::forward(E) to E, nullptr otherwise
-  static const Expr *unwrapForward(const Expr *E) {
+  // Tries to get to the underlying argument by unwrapping implicit nodes and
+  // std::forward.
+  static const DeclRefExpr *unwrapForward(const Expr *E) {
+    E = E->IgnoreImplicitAsWritten();
+    // There might be an implicit copy/move constructor call on top of the
+    // forwarded arg.
+    // FIXME: Maybe mark implicit calls in the AST to properly filter here.
+    if (const auto *Const = dyn_cast<CXXConstructExpr>(E))
+      if (Const->getConstructor()->isCopyOrMoveConstructor())
+        E = Const->getArg(0)->IgnoreImplicitAsWritten();
     if (const auto *Call = dyn_cast<CallExpr>(E)) {
       const auto Callee = Call->getBuiltinCallee();
       if (Callee == Builtin::BIforward) {
-        return Call->getArg(0);
+        return dyn_cast<DeclRefExpr>(
+            Call->getArg(0)->IgnoreImplicitAsWritten());
       }
     }
-    return E;
-  }
-
-  // Maps std::forward(DeclRefExpr) to DeclRefExpr, removing any intermediate
-  // implicit casts, nullptr otherwise
-  static const DeclRefExpr *unwrapArgument(const Expr *E) {
-    E = unwrapImplicitCast(E);
-    E = unwrapForward(E);
-    E = unwrapImplicitCast(E);
     return dyn_cast<DeclRefExpr>(E);
   }
 };

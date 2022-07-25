@@ -18,6 +18,7 @@
 #include <__algorithm/rotate.h>
 #include <__algorithm/upper_bound.h>
 #include <__config>
+#include <__functional/identity.h>
 #include <__iterator/advance.h>
 #include <__iterator/distance.h>
 #include <__iterator/iterator_traits.h>
@@ -104,8 +105,8 @@ __buffered_inplace_merge(_BidirectionalIterator __first, _BidirectionalIterator 
         value_type* __p = __buff;
         for (_BidirectionalIterator __i = __middle; __i != __last; __d.template __incr<value_type>(), (void) ++__i, (void) ++__p)
             ::new ((void*)__p) value_type(_IterOps<_AlgPolicy>::__iter_move(__i));
-        typedef reverse_iterator<_BidirectionalIterator> _RBi;
-        typedef reverse_iterator<value_type*> _Rv;
+        typedef __unconstrained_reverse_iterator<_BidirectionalIterator> _RBi;
+        typedef __unconstrained_reverse_iterator<value_type*> _Rv;
         typedef __invert<_Compare> _Inverted;
         std::__half_inplace_merge<_AlgPolicy, _Inverted>(_Rv(__p), _Rv(__buff),
                                     _RBi(__middle), _RBi(__first),
@@ -157,7 +158,8 @@ __inplace_merge(_BidirectionalIterator __first, _BidirectionalIterator __middle,
             __len21 = __len2 / 2;
             __m2 = __middle;
             _Ops::advance(__m2, __len21);
-            __m1 = _VSTD::__upper_bound<_Compare>(__first, __middle, *__m2, __comp);
+            // TODO: replace _ClassicAlgPolicy and __identity with _AlgPolicy and projection
+            __m1 = std::__upper_bound<_ClassicAlgPolicy>(__first, __middle, *__m2, __comp, std::__identity());
             __len11 = _Ops::distance(__first, __m1);
         }
         else

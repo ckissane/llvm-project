@@ -99,9 +99,12 @@ set(llvm_config_include_buildtree_only_exports)
 
 # For compatibility with projects that include(LLVMConfig)
 # via CMAKE_MODULE_PATH, place API modules next to it.
+# Copy without source permissions because the source could be read-only,
+# but we need to write into the copied folder.
 # This should be removed in the future.
 file(COPY .
   DESTINATION ${llvm_cmake_builddir}
+  NO_SOURCE_PERMISSIONS
   FILES_MATCHING PATTERN *.cmake
   PATTERN CMakeFiles EXCLUDE
   )
@@ -131,7 +134,6 @@ list(REMOVE_DUPLICATES LLVM_CONFIG_LIBRARY_DIRS)
 
 set(LLVM_CONFIG_BINARY_DIR "\${LLVM_INSTALL_PREFIX}")
 extend_path(LLVM_CONFIG_CMAKE_DIR "\${LLVM_INSTALL_PREFIX}" "${LLVM_INSTALL_PACKAGE_DIR}")
-extend_path(LLVM_CONFIG_TOOLS_BINARY_DIR "\${LLVM_INSTALL_PREFIX}" "${LLVM_TOOLS_INSTALL_DIR}")
 
 # Generate a default location for lit
 if (LLVM_INSTALL_UTILS AND LLVM_BUILD_UTILS)
