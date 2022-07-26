@@ -44,6 +44,7 @@
 #include "llvm/Support/Process.h"
 #include "llvm/Support/StringSaver.h"
 #include "llvm/Support/VirtualFileSystem.h"
+#include "llvm/Support/WithColor.h"
 #include "llvm/Support/raw_ostream.h"
 #include <cstdlib>
 #include <string>
@@ -1771,7 +1772,12 @@ bool Option::error(const Twine &Message, StringRef ArgName, raw_ostream &Errs) {
   else
     Errs << GlobalParser->ProgramName << ": for the " << PrintArg(ArgName, 0);
 
-  Errs << " option: " << Message << "\n";
+  Errs << " option:\n";
+  Errs << "- ";
+  Errs.changeColor(raw_ostream::RED, true);
+  Errs << "error:";
+  Errs.resetColor();
+  Errs << " " << Message << "\n";
   return true;
 }
 
@@ -1915,6 +1921,34 @@ bool parser<boolOrDefault>::parse(Option &O, StringRef ArgName, StringRef Arg,
 
   return O.error("'" + Arg +
                  "' is invalid value for boolean argument! Try 0 or 1");
+}
+
+// parser<compression::CompressionAlgorithm *> implementation
+//
+bool parser<compression::CompressionAlgorithm *>::parse(
+    Option &O, StringRef, StringRef Arg,
+    compression::CompressionAlgorithm *&Value) {
+  Value = llvm::StringSwitch<compression::CompressionAlgorithm *>(Arg.str())
+              .Case("none", new compression::NoneCompressionAlgorithm())
+              .Case("zlib", new compression::ZlibCompressionAlgorithm())
+              .Case("zstd", new compression::ZStdCompressionAlgorithm())
+              .Default(new compression::UnknownCompressionAlgorithm());
+  if (Value->getAlgorithmId() ==
+      compression::UnknownCompressionAlgorithm::AlgorithmId) {
+
+    StringRef ArgName = O.ArgStr;
+    errs() << GlobalParser->ProgramName << ": ";
+    errs() << "for the " << PrintArg(ArgName, 0) << " option:\n";
+    errs() << "- ";
+    WithColor::error() << ("'" + Arg.str() +
+                           "' is not a recognized compression scheme!")
+                       << "\n";
+    outs() << "- ";
+    WithColor::note() << "Try one of none, zstd, or zlib"
+                      << "\n";
+    return true;
+  }
+  return false;
 }
 
 // parser<int> implementation

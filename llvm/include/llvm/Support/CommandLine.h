@@ -1161,17 +1161,6 @@ public:
 
 extern template class basic_parser<compression::CompressionAlgorithm *>;
 
-static void exitWithError(Twine Message, std::string Whence = "",
-                          std::string Hint = "") {
-  // WithColor::error();
-  if (!Whence.empty())
-    errs() << Whence << ": ";
-  errs() << Message << "\n";
-  if (!Hint.empty())
-    errs() << Hint << "\n";
-  // WithColor::note() << Hint << "\n";
-  ::exit(1);
-}
 template <>
 class parser<compression::CompressionAlgorithm *>
     : public basic_parser<compression::CompressionAlgorithm *> {
@@ -1180,20 +1169,7 @@ public:
 
   // Return true on error.
   bool parse(Option &, StringRef, StringRef Arg,
-             compression::CompressionAlgorithm *&Value) {
-    Value = llvm::StringSwitch<compression::CompressionAlgorithm *>(Arg.str())
-                .Case("none", new compression::NoneCompressionAlgorithm())
-                .Case("zlib", new compression::ZlibCompressionAlgorithm())
-                .Case("zstd", new compression::ZStdCompressionAlgorithm())
-                .Default(new compression::UnknownCompressionAlgorithm());
-    if (Value->getAlgorithmId() ==
-        compression::UnknownCompressionAlgorithm::AlgorithmId) {
-      exitWithError("'" + Arg.str() +
-                    "' is not 'none' or a recognized compression scheme");
-      return true;
-    }
-    return false;
-  }
+             compression::CompressionAlgorithm *&Value);
 
   // Overload in subclass to provide a better default value.
   StringRef getValueName() const override { return "compression scheme"; }
