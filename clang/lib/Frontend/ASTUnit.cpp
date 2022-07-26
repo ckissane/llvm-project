@@ -80,6 +80,7 @@
 #include "llvm/Bitstream/BitstreamWriter.h"
 #include "llvm/Support/Allocator.h"
 #include "llvm/Support/Casting.h"
+#include "llvm/Support/Compression.h"
 #include "llvm/Support/CrashRecoveryContext.h"
 #include "llvm/Support/DJB.h"
 #include "llvm/Support/ErrorHandling.h"
@@ -221,7 +222,9 @@ struct ASTUnit::ASTWriterData {
   ASTWriter Writer;
 
   ASTWriterData(InMemoryModuleCache &ModuleCache)
-      : Stream(Buffer), Writer(Stream, Buffer, ModuleCache, {}) {}
+      : Stream(Buffer),
+        Writer(Stream, Buffer, ModuleCache, {},
+               new llvm::compression::ZlibCompressionAlgorithm()) {}
 };
 
 void ASTUnit::clearFileLevelDecls() {
@@ -2323,7 +2326,8 @@ bool ASTUnit::serialize(raw_ostream &OS) {
   SmallString<128> Buffer;
   llvm::BitstreamWriter Stream(Buffer);
   InMemoryModuleCache ModuleCache;
-  ASTWriter Writer(Stream, Buffer, ModuleCache, {});
+  ASTWriter Writer(Stream, Buffer, ModuleCache, {},
+                   new llvm::compression::ZlibCompressionAlgorithm());
   return serializeUnit(Writer, Buffer, getSema(), hasErrors, OS);
 }
 

@@ -401,10 +401,18 @@ int main(int argc, char **argv) {
   MAI->setRelaxELFRelocations(RelaxELFRel);
 
   if (CompressDebugSections != DebugCompressionType::None) {
-    if (!compression::ZlibCompressionAlgorithm().supported()) {
-      WithColor::error(errs(), ProgName)
-          << "build tools with zlib to enable -compress-debug-sections";
-      return 1;
+    if (CompressDebugSections == DebugCompressionType::Z) {
+      if (!compression::ZlibCompressionAlgorithm().supported()) {
+        WithColor::error(errs(), ProgName)
+            << "build tools with zlib to enable -compress-debug-sections=zlib";
+        return 1;
+      }
+    } else if (CompressDebugSections == DebugCompressionType::ZStd) {
+      if (!compression::ZStdCompressionAlgorithm().supported()) {
+        WithColor::error(errs(), ProgName)
+            << "build tools with zstd to enable -compress-debug-sections=zstd";
+        return 1;
+      }
     }
     MAI->setCompressDebugSections(CompressDebugSections);
   }

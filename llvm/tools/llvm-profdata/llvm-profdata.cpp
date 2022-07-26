@@ -25,6 +25,7 @@
 #include "llvm/ProfileData/SampleProfReader.h"
 #include "llvm/ProfileData/SampleProfWriter.h"
 #include "llvm/Support/CommandLine.h"
+#include "llvm/Support/Compression.h"
 #include "llvm/Support/Discriminator.h"
 #include "llvm/Support/Errc.h"
 #include "llvm/Support/FileSystem.h"
@@ -829,7 +830,8 @@ mergeSampleProfile(const WeightedFileVector &Inputs, SymbolRemapper *Remapper,
   }
 
   auto WriterOrErr =
-      SampleProfileWriter::create(OutputFilename, FormatMap[OutputFormat]);
+      SampleProfileWriter::create(OutputFilename, FormatMap[OutputFormat],
+                                  new compression::ZlibCompressionAlgorithm());
   if (std::error_code EC = WriterOrErr.getError())
     exitWithErrorCode(EC, OutputFilename);
 

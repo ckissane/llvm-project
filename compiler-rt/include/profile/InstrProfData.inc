@@ -648,11 +648,11 @@ serializeValueProfDataFrom(ValueProfRecordClosure *Closure,
 
 /* FIXME: Please remedy the fixme in the header before bumping the version. */
 /* Raw profile format version (start from 1). */
-#define INSTR_PROF_RAW_VERSION 8
+#define INSTR_PROF_RAW_VERSION 9
 /* Indexed profile format version (start from 1). */
-#define INSTR_PROF_INDEX_VERSION 8
+#define INSTR_PROF_INDEX_VERSION 9
 /* Coverage mapping format version (start from 0). */
-#define INSTR_PROF_COVMAP_VERSION 5
+#define INSTR_PROF_COVMAP_VERSION 6
 
 /* Profile version is always of type uint64_t. Reserve the upper 8 bits in the
  * version for other variants of profile. We set the lowest bit of the upper 8

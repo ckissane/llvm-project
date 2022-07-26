@@ -17,6 +17,7 @@
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/ProfileData/Coverage/CoverageMapping.h"
+#include "llvm/Support/Compression.h"
 
 namespace llvm {
 
@@ -32,9 +33,12 @@ class CoverageFilenamesSectionWriter {
 public:
   CoverageFilenamesSectionWriter(ArrayRef<std::string> Filenames);
 
-  /// Write encoded filenames to the given output stream. If \p Compress is
-  /// true, attempt to compress the filenames.
-  void write(raw_ostream &OS, bool Compress = true);
+  /// Write encoded filenames to the given output stream. If \p
+  /// CompressionScheme is not an instance of
+  /// llvm::compression::NoneCompressionAlgorithm, attempt to compress the
+  /// filenames.
+  void write(raw_ostream &OS,
+             compression::CompressionAlgorithm *CompressionScheme);
 };
 
 /// Writer for instrumentation based coverage mapping data.

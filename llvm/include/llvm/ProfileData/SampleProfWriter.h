@@ -16,6 +16,7 @@
 #include "llvm/ADT/StringRef.h"
 #include "llvm/IR/ProfileSummary.h"
 #include "llvm/ProfileData/SampleProf.h"
+#include "llvm/Support/Compression.h"
 #include "llvm/Support/ErrorOr.h"
 #include "llvm/Support/raw_ostream.h"
 #include <cstdint>
@@ -56,12 +57,14 @@ public:
   ///
   /// Create a new file writer based on the value of \p Format.
   static ErrorOr<std::unique_ptr<SampleProfileWriter>>
-  create(StringRef Filename, SampleProfileFormat Format);
+  create(StringRef Filename, SampleProfileFormat Format,
+         compression::CompressionAlgorithm *CompressionScheme);
 
   /// Create a new stream writer based on the value of \p Format.
   /// For testing.
   static ErrorOr<std::unique_ptr<SampleProfileWriter>>
-  create(std::unique_ptr<raw_ostream> &OS, SampleProfileFormat Format);
+  create(std::unique_ptr<raw_ostream> &OS, SampleProfileFormat Format,
+         compression::CompressionAlgorithm *CompressionScheme);
 
   virtual void setProfileSymbolList(ProfileSymbolList *PSL) {}
   virtual void setToCompressAllSections() {}
@@ -70,8 +73,9 @@ public:
   virtual void resetSecLayout(SectionLayout SL) {}
 
 protected:
-  SampleProfileWriter(std::unique_ptr<raw_ostream> &OS)
-      : OutputStream(std::move(OS)) {}
+  SampleProfileWriter(std::unique_ptr<raw_ostream> &OS,
+                      compression::CompressionAlgorithm *CompressionScheme)
+      : OutputStream(std::move(OS)), CompressionScheme(CompressionScheme) {}
 
   /// Write a file header for the profile file.
   virtual std::error_code writeHeader(const SampleProfileMap &ProfileMap) = 0;
@@ -90,6 +94,9 @@ protected:
 
   /// Profile format.
   SampleProfileFormat Format = SPF_None;
+
+  /// Compression scheme;
+  compression::CompressionAlgorithm *CompressionScheme;
 };
 
 /// Sample-based profile writer (text format).
@@ -98,8 +105,9 @@ public:
   std::error_code writeSample(const FunctionSamples &S) override;
 
 protected:
-  SampleProfileWriterText(std::unique_ptr<raw_ostream> &OS)
-      : SampleProfileWriter(OS), Indent(0) {}
+  SampleProfileWriterText(std::unique_ptr<raw_ostream> &OS,
+                          compression::CompressionAlgorithm *CompressionScheme)
+      : SampleProfileWriter(OS, CompressionScheme), Indent(0) {}
 
   std::error_code writeHeader(const SampleProfileMap &ProfileMap) override {
     return sampleprof_error::success;
@@ -112,15 +120,18 @@ private:
   unsigned Indent;
 
   friend ErrorOr<std::unique_ptr<SampleProfileWriter>>
-  SampleProfileWriter::create(std::unique_ptr<raw_ostream> &OS,
-                              SampleProfileFormat Format);
+  SampleProfileWriter::create(
+      std::unique_ptr<raw_ostream> &OS, SampleProfileFormat Format,
+      compression::CompressionAlgorithm *CompressionScheme);
 };
 
 /// Sample-based profile writer (binary format).
 class SampleProfileWriterBinary : public SampleProfileWriter {
 public:
-  SampleProfileWriterBinary(std::unique_ptr<raw_ostream> &OS)
-      : SampleProfileWriter(OS) {}
+  SampleProfileWriterBinary(
+      std::unique_ptr<raw_ostream> &OS,
+      compression::CompressionAlgorithm *CompressionScheme)
+      : SampleProfileWriter(OS, CompressionScheme) {}
 
   std::error_code writeSample(const FunctionSamples &S) override;
 
@@ -144,8 +155,9 @@ protected:
 
 private:
   friend ErrorOr<std::unique_ptr<SampleProfileWriter>>
-  SampleProfileWriter::create(std::unique_ptr<raw_ostream> &OS,
-                              SampleProfileFormat Format);
+  SampleProfileWriter::create(
+      std::unique_ptr<raw_ostream> &OS, SampleProfileFormat Format,
+      compression::CompressionAlgorithm *CompressionScheme);
 };
 
 class SampleProfileWriterRawBinary : public SampleProfileWriterBinary {
@@ -324,8 +336,10 @@ private:
 
 class SampleProfileWriterExtBinary : public SampleProfileWriterExtBinaryBase {
 public:
-  SampleProfileWriterExtBinary(std::unique_ptr<raw_ostream> &OS)
-      : SampleProfileWriterExtBinaryBase(OS) {}
+  SampleProfileWriterExtBinary(
+      std::unique_ptr<raw_ostream> &OS,
+      compression::CompressionAlgorithm *CompressionScheme)
+      : SampleProfileWriterExtBinaryBase(OS, CompressionScheme) {}
 
 private:
   std::error_code writeDefaultLayout(const SampleProfileMap &ProfileMap);

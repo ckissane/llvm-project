@@ -27,10 +27,13 @@
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringMap.h"
 #include "llvm/ADT/StringRef.h"
+#include "llvm/ADT/StringSwitch.h"
 #include "llvm/ADT/Twine.h"
 #include "llvm/ADT/iterator_range.h"
+#include "llvm/Support/Compression.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/ManagedStatic.h"
+#include "llvm/Support/WithColor.h"
 #include "llvm/Support/raw_ostream.h"
 #include <cassert>
 #include <climits>
@@ -1150,6 +1153,53 @@ public:
 
   void printOptionDiff(const Option &O, StringRef V, const OptVal &Default,
                        size_t GlobalWidth) const;
+
+  // An out-of-line virtual method to provide a 'home' for this class.
+  void anchor() override;
+};
+
+//--------------------------------------------------
+
+extern template class basic_parser<compression::CompressionAlgorithm *>;
+
+static void exitWithError(Twine Message, std::string Whence = "",
+                          std::string Hint = "") {
+  WithColor::error();
+  if (!Whence.empty())
+    errs() << Whence << ": ";
+  errs() << Message << "\n";
+  if (!Hint.empty())
+    WithColor::note() << Hint << "\n";
+  ::exit(1);
+}
+template <>
+class parser<compression::CompressionAlgorithm *>
+    : public basic_parser<compression::CompressionAlgorithm *> {
+public:
+  parser(Option &O) : basic_parser(O) {}
+
+  // Return true on error.
+  bool parse(Option &, StringRef, StringRef Arg,
+             compression::CompressionAlgorithm *&Value) {
+    Value = llvm::StringSwitch<compression::CompressionAlgorithm *>(Arg.str())
+                .Case("none", new compression::NoneCompressionAlgorithm())
+                .Case("zlib", new compression::ZlibCompressionAlgorithm())
+                .Case("zstd", new compression::ZStdCompressionAlgorithm())
+                .Default(new compression::UnknownCompressionAlgorithm());
+    if (Value->getAlgorithmId() ==
+        compression::UnknownCompressionAlgorithm::AlgorithmId) {
+      exitWithError("'" + Arg.str() +
+                    "' is not 'none' or a recognized compression scheme");
+      return true;
+    }
+    return false;
+  }
+
+  // Overload in subclass to provide a better default value.
+  StringRef getValueName() const override { return "compression scheme"; }
+
+  void printOptionDiff(const Option &O, compression::CompressionAlgorithm *V,
+                       OptVal Default, size_t GlobalWidth) const;
 
   // An out-of-line virtual method to provide a 'home' for this class.
   void anchor() override;

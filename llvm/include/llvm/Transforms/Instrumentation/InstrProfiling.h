@@ -18,6 +18,7 @@
 #include "llvm/IR/IntrinsicInst.h"
 #include "llvm/IR/PassManager.h"
 #include "llvm/ProfileData/InstrProf.h"
+#include "llvm/Support/Compression.h"
 #include "llvm/Transforms/Instrumentation.h"
 #include <cstdint>
 #include <cstring>
@@ -134,6 +135,7 @@ private:
   /// Create a static initializer for our data, on platforms that need it,
   /// and for any profile output file that was specified.
   void emitInitialization();
+  compression::CompressionAlgorithm *CompressionScheme;
 };
 
 } // end namespace llvm

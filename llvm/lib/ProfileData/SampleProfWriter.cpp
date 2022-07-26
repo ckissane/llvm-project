@@ -78,9 +78,7 @@ SampleProfileWriterExtBinaryBase::markSectionStart(SecType Type,
 }
 
 std::error_code SampleProfileWriterExtBinaryBase::compressAndOutput() {
-  compression::CompressionAlgorithm CompressionScheme =
-      compression::ZlibCompressionAlgorithm();
-  if (!CompressionScheme.supported())
+  if (!CompressionScheme->supported())
     return sampleprof_error::zlib_unavailable;
   std::string &UncompressedStrings =
       static_cast<raw_string_ostream *>(LocalBufStream.get())->str();
@@ -88,11 +86,12 @@ std::error_code SampleProfileWriterExtBinaryBase::compressAndOutput() {
     return sampleprof_error::success;
   auto &OS = *OutputStream;
   SmallVector<uint8_t, 128> CompressedStrings;
-  CompressionScheme.compress(arrayRefFromStringRef(UncompressedStrings),
-                             CompressedStrings,
-                             CompressionScheme.BestSizeCompression);
+  CompressionScheme->compress(arrayRefFromStringRef(UncompressedStrings),
+                              CompressedStrings,
+                              CompressionScheme->getBestSizeLevel());
   encodeULEB128(UncompressedStrings.size(), OS);
   encodeULEB128(CompressedStrings.size(), OS);
+  encodeULEB128(static_cast<uint8_t>(CompressionScheme->getAlgorithmId()), OS);
   OS << toStringRef(CompressedStrings);
   UncompressedStrings.clear();
   return sampleprof_error::success;
@@ -842,8 +841,9 @@ SampleProfileWriterCompactBinary::writeSample(const FunctionSamples &S) {
 /// \param Format Encoding format for the profile file.
 ///
 /// \returns an error code indicating the status of the created writer.
-ErrorOr<std::unique_ptr<SampleProfileWriter>>
-SampleProfileWriter::create(StringRef Filename, SampleProfileFormat Format) {
+ErrorOr<std::unique_ptr<SampleProfileWriter>> SampleProfileWriter::create(
+    StringRef Filename, SampleProfileFormat Format,
+    compression::CompressionAlgorithm *CompressionScheme) {
   std::error_code EC;
   std::unique_ptr<raw_ostream> OS;
   if (Format == SPF_Binary || Format == SPF_Ext_Binary ||
@@ -854,7 +854,7 @@ SampleProfileWriter::create(StringRef Filename, SampleProfileFormat Format) {
   if (EC)
     return EC;
 
-  return create(OS, Format);
+  return create(OS, Format, CompressionScheme);
 }
 
 /// Create a sample profile stream writer based on the specified format.
@@ -864,9 +864,9 @@ SampleProfileWriter::create(StringRef Filename, SampleProfileFormat Format) {
 /// \param Format Encoding format for the profile file.
 ///
 /// \returns an error code indicating the status of the created writer.
-ErrorOr<std::unique_ptr<SampleProfileWriter>>
-SampleProfileWriter::create(std::unique_ptr<raw_ostream> &OS,
-                            SampleProfileFormat Format) {
+ErrorOr<std::unique_ptr<SampleProfileWriter>> SampleProfileWriter::create(
+    std::unique_ptr<raw_ostream> &OS, SampleProfileFormat Format,
+    compression::CompressionAlgorithm *CompressionScheme) {
   std::error_code EC;
   std::unique_ptr<SampleProfileWriter> Writer;
 
@@ -876,13 +876,13 @@ SampleProfileWriter::create(std::unique_ptr<raw_ostream> &OS,
     return sampleprof_error::unsupported_writing_format;
 
   if (Format == SPF_Binary)
-    Writer.reset(new SampleProfileWriterRawBinary(OS));
+    Writer.reset(new SampleProfileWriterRawBinary(OS, CompressionScheme));
   else if (Format == SPF_Ext_Binary)
-    Writer.reset(new SampleProfileWriterExtBinary(OS));
+    Writer.reset(new SampleProfileWriterExtBinary(OS, CompressionScheme));
   else if (Format == SPF_Compact_Binary)
-    Writer.reset(new SampleProfileWriterCompactBinary(OS));
+    Writer.reset(new SampleProfileWriterCompactBinary(OS, CompressionScheme));
   else if (Format == SPF_Text)
-    Writer.reset(new SampleProfileWriterText(OS));
+    Writer.reset(new SampleProfileWriterText(OS, CompressionScheme));
   else if (Format == SPF_GCC)
     EC = sampleprof_error::unsupported_writing_format;
   else

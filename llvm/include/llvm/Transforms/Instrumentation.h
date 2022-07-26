@@ -19,6 +19,7 @@
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/Instruction.h"
+#include "llvm/Support/Compression.h"
 #include <cassert>
 #include <cstdint>
 #include <limits>
@@ -119,6 +120,8 @@ struct InstrProfOptions {
 
   // Name of the profile file to use as output
   std::string InstrProfileOutput;
+
+  compression::CompressionAlgorithm *CompressionScheme;
 
   InstrProfOptions() = default;
 };

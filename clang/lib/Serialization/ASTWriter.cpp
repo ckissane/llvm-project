@@ -2001,27 +2001,27 @@ void ASTWriter::WriteHeaderSearch(const HeaderSearch &HS) {
     free(const_cast<char *>(SavedStrings[I]));
 }
 
-static void emitBlob(llvm::BitstreamWriter &Stream, StringRef Blob,
-                     unsigned SLocBufferBlobCompressedAbbrv,
-                     unsigned SLocBufferBlobCompressedDynamicAbbrv,
-                     unsigned SLocBufferBlobAbbrv) {
+static void
+emitBlob(llvm::BitstreamWriter &Stream, StringRef Blob,
+         unsigned SLocBufferBlobCompressedAbbrv,
+         unsigned SLocBufferBlobCompressedDynamicAbbrv,
+         unsigned SLocBufferBlobAbbrv,
+         llvm::compression::CompressionAlgorithm *CompressionScheme) {
   using RecordDataType = ASTWriter::RecordData::value_type;
 
   // Compress the buffer if possible. We expect that almost all PCM
   // consumers will not want its contents.
-  llvm::compression::CompressionAlgorithm CompressionScheme =
-      llvm::compression::ZlibCompressionAlgorithm();
 
-  if (CompressionScheme.supported()) {
+  if (CompressionScheme->supported()) {
 
     SmallVector<uint8_t, 0> CompressedBuffer;
 
-    CompressionScheme.compress(llvm::arrayRefFromStringRef(Blob.drop_back(1)),
-                               CompressedBuffer);
+    CompressionScheme->compress(llvm::arrayRefFromStringRef(Blob.drop_back(1)),
+                                CompressedBuffer);
     // if our chosen CompressionAlgorithm happens to be zlib output old format
     // for extra back compat
-    if (CompressionScheme.AlgorithmId ==
-        llvm::compression::ZlibCompressionAlgorithm().AlgorithmId) {
+    if (CompressionScheme->getAlgorithmId() ==
+        llvm::compression::SupportCompressionType::Zlib) {
 
       RecordDataType Record[] = {SM_SLOC_BUFFER_BLOB_COMPRESSED,
                                  Blob.size() - 1};
@@ -2031,7 +2031,7 @@ static void emitBlob(llvm::BitstreamWriter &Stream, StringRef Blob,
     }
     RecordDataType Record[] = {
         SM_SLOC_BUFFER_BLOB_COMPRESSED_DYNAMIC, Blob.size() - 1,
-        static_cast<uint8_t>(CompressionScheme.AlgorithmId)};
+        static_cast<uint8_t>(CompressionScheme->getAlgorithmId())};
     Stream.EmitRecordWithBlob(SLocBufferBlobCompressedDynamicAbbrv, Record,
                               llvm::toStringRef(CompressedBuffer));
     return;
@@ -2165,7 +2165,8 @@ void ASTWriter::WriteSourceManagerBlock(SourceManager &SourceMgr,
           Buffer = llvm::MemoryBufferRef("<<<INVALID BUFFER>>>", "");
         StringRef Blob(Buffer->getBufferStart(), Buffer->getBufferSize() + 1);
         emitBlob(Stream, Blob, SLocBufferBlobCompressedAbbrv,
-                 SLocBufferBlobCompressedDynamicAbbrv, SLocBufferBlobAbbrv);
+                 SLocBufferBlobCompressedDynamicAbbrv, SLocBufferBlobAbbrv,
+                 CompressionScheme);
       }
     } else {
       // The source location entry is a macro expansion.
@@ -4487,8 +4488,10 @@ ASTWriter::ASTWriter(llvm::BitstreamWriter &Stream,
                      SmallVectorImpl<char> &Buffer,
                      InMemoryModuleCache &ModuleCache,
                      ArrayRef<std::shared_ptr<ModuleFileExtension>> Extensions,
+                     llvm::compression::CompressionAlgorithm *CompressionScheme,
                      bool IncludeTimestamps)
     : Stream(Stream), Buffer(Buffer), ModuleCache(ModuleCache),
+      CompressionScheme(CompressionScheme),
       IncludeTimestamps(IncludeTimestamps) {
   for (const auto &Ext : Extensions) {
     if (auto Writer = Ext->createExtensionWriter(*this))

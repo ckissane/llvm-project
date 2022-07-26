@@ -205,9 +205,11 @@ const char *InstrProfSectNamePrefix[] = {
 
 namespace llvm {
 
-cl::opt<bool> DoInstrProfNameCompression(
-    "enable-name-compression",
-    cl::desc("Enable name/filename string compression"), cl::init(true));
+cl::opt<compression::CompressionAlgorithm *> InstrProfNameCompressionScheme(
+    "name-compression-scheme",
+    cl::desc("Scheme for name/filename string compression (none/zlib/ztsd), "
+             "defaults to zstd"),
+    cl::init(new compression::ZStdCompressionAlgorithm()));
 
 std::string getInstrProfSectionName(InstrProfSectKind IPSK,
                                     Triple::ObjectFormatType OF,
@@ -435,8 +437,9 @@ uint64_t InstrProfSymtab::getFunctionHashFromAddress(uint64_t Address) {
   return 0;
 }
 
-Error collectPGOFuncNameStrings(ArrayRef<std::string> NameStrs,
-                                bool doCompression, std::string &Result) {
+Error collectPGOFuncNameStrings(
+    ArrayRef<std::string> NameStrs,
+    compression::CompressionAlgorithm *CompressionScheme, std::string &Result) {
   assert(!NameStrs.empty() && "No name data to emit");
 
   uint8_t Header[16], *P = Header;
@@ -450,27 +453,43 @@ Error collectPGOFuncNameStrings(ArrayRef<std::string> NameStrs,
   unsigned EncLen = encodeULEB128(UncompressedNameStrings.length(), P);
   P += EncLen;
 
-  auto WriteStringToResult = [&](size_t CompressedLen, StringRef InputStr) {
-    EncLen = encodeULEB128(CompressedLen, P);
-    P += EncLen;
-    char *HeaderStr = reinterpret_cast<char *>(&Header[0]);
-    unsigned HeaderLen = P - &Header[0];
-    Result.append(HeaderStr, HeaderLen);
-    Result += InputStr;
-    return Error::success();
-  };
+  auto WriteStringToResult =
+      [&](size_t CompressedLen,
+          compression::SupportCompressionType CompressionSchemeId,
+          StringRef InputStr) {
+        if (CompressedLen == 0) {
+          EncLen = encodeULEB128(CompressedLen, P);
+          P += EncLen;
+          char *HeaderStr = reinterpret_cast<char *>(&Header[0]);
+          unsigned HeaderLen = P - &Header[0];
+          Result.append(HeaderStr, HeaderLen);
+          Result += InputStr;
+          return Error::success();
+        } else {
+          EncLen = encodeULEB128(CompressedLen, P);
+          P += EncLen;
+          EncLen = encodeULEB128(static_cast<uint8_t>(CompressionSchemeId), P);
+          P += EncLen;
+          char *HeaderStr = reinterpret_cast<char *>(&Header[0]);
+          unsigned HeaderLen = P - &Header[0];
+          Result.append(HeaderStr, HeaderLen);
+          Result += InputStr;
+          return Error::success();
+        }
+      };
 
-  if (!doCompression) {
-    return WriteStringToResult(0, UncompressedNameStrings);
+  if (CompressionScheme->getAlgorithmId() ==
+      compression::NoneCompressionAlgorithm().AlgorithmId) {
+    return WriteStringToResult(0, compression::SupportCompressionType::None,
+                               UncompressedNameStrings);
   }
-  compression::CompressionAlgorithm CompressionScheme =
-      compression::ZlibCompressionAlgorithm();
   SmallVector<uint8_t, 128> CompressedNameStrings;
-  CompressionScheme.compress(arrayRefFromStringRef(UncompressedNameStrings),
-                             CompressedNameStrings,
-                             CompressionScheme.BestSizeCompression);
+  CompressionScheme->compress(arrayRefFromStringRef(UncompressedNameStrings),
+                              CompressedNameStrings,
+                              CompressionScheme->getBestSizeLevel());
 
   return WriteStringToResult(CompressedNameStrings.size(),
+                             CompressionScheme->getAlgorithmId(),
                              toStringRef(CompressedNameStrings));
 }
 
@@ -481,22 +500,22 @@ StringRef getPGOFuncNameVarInitializer(GlobalVariable *NameVar) {
   return NameStr;
 }
 
-Error collectPGOFuncNameStrings(ArrayRef<GlobalVariable *> NameVars,
-                                std::string &Result, bool doCompression) {
+Error collectPGOFuncNameStrings(
+    ArrayRef<GlobalVariable *> NameVars, std::string &Result,
+    compression::CompressionAlgorithm *CompressionScheme) {
   std::vector<std::string> NameStrs;
   for (auto *NameVar : NameVars) {
     NameStrs.push_back(std::string(getPGOFuncNameVarInitializer(NameVar)));
   }
-  compression::CompressionAlgorithm CompressionScheme =
-      compression::ZlibCompressionAlgorithm();
   return collectPGOFuncNameStrings(
-      NameStrs, CompressionScheme.supported() && doCompression, Result);
+      NameStrs,
+      CompressionScheme->supported()
+          ? CompressionScheme
+          : new compression::NoneCompressionAlgorithm(),
+      Result);
 }
 
 Error readPGOFuncNameStrings(StringRef NameStrings, InstrProfSymtab &Symtab) {
-  compression::CompressionAlgorithm CompressionScheme =
-      compression::ZlibCompressionAlgorithm();
-
   const uint8_t *P = NameStrings.bytes_begin();
   const uint8_t *EndP = NameStrings.bytes_end();
   while (P < EndP) {
@@ -506,13 +525,21 @@ Error readPGOFuncNameStrings(StringRef NameStrings, InstrProfSymtab &Symtab) {
     uint64_t CompressedSize = decodeULEB128(P, &N);
     P += N;
     bool isCompressed = (CompressedSize != 0);
+    compression::CompressionAlgorithm *CompressionScheme =
+        new compression::NoneCompressionAlgorithm();
+    if (isCompressed) {
+      uint64_t CompressionSchemeId = decodeULEB128(P, &N);
+      P += N;
+      CompressionScheme =
+          compression::CompressionAlgorithmFromId(CompressionSchemeId);
+    }
     SmallVector<uint8_t, 128> UncompressedNameStrings;
     StringRef NameStrings;
     if (isCompressed) {
-      if (!CompressionScheme.supported())
+      if (!CompressionScheme->supported())
         return make_error<InstrProfError>(instrprof_error::zlib_unavailable);
 
-      if (Error E = CompressionScheme.decompress(
+      if (Error E = CompressionScheme->decompress(
               makeArrayRef(P, CompressedSize), UncompressedNameStrings,
               UncompressedSize)) {
         consumeError(std::move(E));
@@ -1350,7 +1377,7 @@ Expected<Header> Header::readFromBuffer(const unsigned char *Buffer) {
     // When a new field is added in the header add a case statement here to
     // populate it.
     static_assert(
-        IndexedInstrProf::ProfVersion::CurrentVersion == Version8,
+        IndexedInstrProf::ProfVersion::CurrentVersion == Version9,
         "Please update the reading code below if a new field has been added, "
         "if not add a case statement to fall through to the latest version.");
   case 8ull:
@@ -1369,7 +1396,7 @@ size_t Header::size() const {
     // When a new field is added to the header add a case statement here to
     // compute the size as offset of the new field + size of the new field. This
     // relies on the field being added to the end of the list.
-    static_assert(IndexedInstrProf::ProfVersion::CurrentVersion == Version8,
+    static_assert(IndexedInstrProf::ProfVersion::CurrentVersion == Version9,
                   "Please update the size computation below if a new field has "
                   "been added to the header, if not add a case statement to "
                   "fall through to the latest version.");

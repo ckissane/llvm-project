@@ -28,10 +28,13 @@
 #include "index/Index.h"
 #include "index/Symbol.h"
 #include "clang/Tooling/CompilationDatabase.h"
+#include "llvm/Support/Compression.h"
 #include "llvm/Support/Error.h"
 
 namespace clang {
 namespace clangd {
+
+extern llvm::compression::CompressionAlgorithm *StringTableCompressionScheme;
 
 enum class IndexFileFormat {
   RIFF, // Versioned binary format, suitable for production use.

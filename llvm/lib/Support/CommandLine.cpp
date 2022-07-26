@@ -31,6 +31,7 @@
 #include "llvm/ADT/Triple.h"
 #include "llvm/ADT/Twine.h"
 #include "llvm/Config/config.h"
+#include "llvm/Support/Compression.h"
 #include "llvm/Support/ConvertUTF.h"
 #include "llvm/Support/Debug.h"
 #include "llvm/Support/Error.h"
@@ -67,6 +68,7 @@ template class basic_parser<unsigned long long>;
 template class basic_parser<double>;
 template class basic_parser<float>;
 template class basic_parser<std::string>;
+template class basic_parser<compression::CompressionAlgorithm *>;
 template class basic_parser<char>;
 
 template class opt<unsigned>;
@@ -74,6 +76,7 @@ template class opt<int>;
 template class opt<std::string>;
 template class opt<char>;
 template class opt<bool>;
+template class opt<compression::CompressionAlgorithm *>;
 } // namespace cl
 } // namespace llvm
 
@@ -95,6 +98,7 @@ void parser<double>::anchor() {}
 void parser<float>::anchor() {}
 void parser<std::string>::anchor() {}
 void parser<char>::anchor() {}
+void parser<compression::CompressionAlgorithm *>::anchor() {}
 
 //===----------------------------------------------------------------------===//
 
@@ -2158,6 +2162,7 @@ PRINT_OPT_DIFF(unsigned long)
 PRINT_OPT_DIFF(unsigned long long)
 PRINT_OPT_DIFF(double)
 PRINT_OPT_DIFF(float)
+PRINT_OPT_DIFF(compression::CompressionAlgorithm *)
 PRINT_OPT_DIFF(char)
 
 void parser<std::string>::printOptionDiff(const Option &O, StringRef V,

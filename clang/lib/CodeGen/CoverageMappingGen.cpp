@@ -24,6 +24,7 @@
 #include "llvm/ProfileData/Coverage/CoverageMappingReader.h"
 #include "llvm/ProfileData/Coverage/CoverageMappingWriter.h"
 #include "llvm/ProfileData/InstrProfReader.h"
+#include "llvm/Support/Compression.h"
 #include "llvm/Support/FileSystem.h"
 #include "llvm/Support/Path.h"
 
@@ -1704,7 +1705,8 @@ void CoverageMappingModuleGen::emit() {
   std::string Filenames;
   {
     llvm::raw_string_ostream OS(Filenames);
-    CoverageFilenamesSectionWriter(FilenameStrs).write(OS);
+    CoverageFilenamesSectionWriter(FilenameStrs)
+        .write(OS, new llvm::compression::ZlibCompressionAlgorithm());
   }
   auto *FilenamesVal =
       llvm::ConstantDataArray::getString(Ctx, Filenames, false);

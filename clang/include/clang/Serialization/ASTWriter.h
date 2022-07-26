@@ -35,6 +35,7 @@
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Bitstream/BitstreamWriter.h"
+#include "llvm/Support/Compression.h"
 #include <cassert>
 #include <cstddef>
 #include <cstdint>
@@ -93,6 +94,7 @@ public:
   using RecordDataRef = ArrayRef<uint64_t>;
 
 private:
+  llvm::compression::CompressionAlgorithm *CompressionScheme;
   /// Map that provides the ID numbers of each type within the
   /// output stream, plus those deserialized from a chained PCH.
   ///
@@ -542,6 +544,7 @@ public:
   ASTWriter(llvm::BitstreamWriter &Stream, SmallVectorImpl<char> &Buffer,
             InMemoryModuleCache &ModuleCache,
             ArrayRef<std::shared_ptr<ModuleFileExtension>> Extensions,
+            llvm::compression::CompressionAlgorithm *CompressionScheme,
             bool IncludeTimestamps = true);
   ~ASTWriter() override;
 

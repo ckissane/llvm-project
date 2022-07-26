@@ -17,6 +17,7 @@
 #include "clang/Sema/SemaConsumer.h"
 #include "clang/Serialization/ASTWriter.h"
 #include "llvm/Bitstream/BitstreamWriter.h"
+#include "llvm/Support/Compression.h"
 
 using namespace clang;
 
@@ -29,6 +30,7 @@ PCHGenerator::PCHGenerator(
     : PP(PP), OutputFile(OutputFile), isysroot(isysroot.str()),
       SemaPtr(nullptr), Buffer(std::move(Buffer)), Stream(this->Buffer->Data),
       Writer(Stream, this->Buffer->Data, ModuleCache, Extensions,
+             new llvm::compression::ZlibCompressionAlgorithm(),
              IncludeTimestamps),
       AllowASTWithErrors(AllowASTWithErrors),
       ShouldCacheASTInMemory(ShouldCacheASTInMemory) {

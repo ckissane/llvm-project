@@ -26,6 +26,7 @@
 #include "llvm/ProfileData/InstrProfData.inc"
 #include "llvm/Support/CommandLine.h"
 #include "llvm/Support/Compiler.h"
+#include "llvm/Support/Compression.h"
 #include "llvm/Support/Endian.h"
 #include "llvm/Support/Error.h"
 #include "llvm/Support/ErrorHandling.h"
@@ -214,13 +215,15 @@ StringRef getFuncNameWithoutPrefix(StringRef PGOFuncName,
 ///  third field is the uncompressed strings; otherwise it is the
 /// compressed string. When the string compression is off, the
 /// second field will have value zero.
-Error collectPGOFuncNameStrings(ArrayRef<std::string> NameStrs,
-                                bool doCompression, std::string &Result);
+Error collectPGOFuncNameStrings(
+    ArrayRef<std::string> NameStrs,
+    compression::CompressionAlgorithm *CompressionScheme, std::string &Result);
 
 /// Produce \c Result string with the same format described above. The input
 /// is vector of PGO function name variables that are referenced.
-Error collectPGOFuncNameStrings(ArrayRef<GlobalVariable *> NameVars,
-                                std::string &Result, bool doCompression = true);
+Error collectPGOFuncNameStrings(
+    ArrayRef<GlobalVariable *> NameVars, std::string &Result,
+    compression::CompressionAlgorithm *CompressionScheme);
 
 /// \c NameStrings is a string composed of one of more sub-strings encoded in
 /// the format described above. The substrings are separated by 0 or more zero
@@ -1021,7 +1024,9 @@ enum ProfVersion {
   Version7 = 7,
   // An additional (optional) memory profile type is added.
   Version8 = 8,
-  // The current version is 8.
+  // more compression types
+  Version9 = 9,
+  // The current version is 9.
   CurrentVersion = INSTR_PROF_INDEX_VERSION
 };
 const uint64_t Version = ProfVersion::CurrentVersion;
@@ -1198,7 +1203,8 @@ void createProfileFileNameVar(Module &M, StringRef InstrProfileOutput);
 
 // Whether to compress function names in profile records, and filenames in
 // code coverage mappings. Used by the Instrumentation library and unit tests.
-extern cl::opt<bool> DoInstrProfNameCompression;
+extern cl::opt<compression::CompressionAlgorithm *>
+    InstrProfNameCompressionScheme;
 
 } // end namespace llvm
 #endif // LLVM_PROFILEDATA_INSTRPROF_H

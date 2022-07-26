@@ -36,7 +36,8 @@ CoverageFilenamesSectionWriter::CoverageFilenamesSectionWriter(
 #endif
 }
 
-void CoverageFilenamesSectionWriter::write(raw_ostream &OS, bool Compress) {
+void CoverageFilenamesSectionWriter::write(
+    raw_ostream &OS, compression::CompressionAlgorithm *CompressionScheme) {
   std::string FilenamesStr;
   {
     raw_string_ostream FilenamesOS{FilenamesStr};
@@ -47,22 +48,26 @@ void CoverageFilenamesSectionWriter::write(raw_ostream &OS, bool Compress) {
   }
 
   SmallVector<uint8_t, 128> CompressedStr;
-  compression::CompressionAlgorithm CompressionScheme =
-      compression::ZlibCompressionAlgorithm();
-  bool doCompression =
-      Compress && CompressionScheme.supported() && DoInstrProfNameCompression;
+  bool doCompression = (CompressionScheme->getAlgorithmId() !=
+                        compression::NoneCompressionAlgorithm().AlgorithmId) &&
+                       CompressionScheme->supported();
   if (doCompression)
-    CompressionScheme.compress(arrayRefFromStringRef(FilenamesStr),
-                               CompressedStr,
-                               CompressionScheme.BestSizeCompression);
+    CompressionScheme->compress(arrayRefFromStringRef(FilenamesStr),
+                                CompressedStr,
+                                CompressionScheme->getBestSizeLevel());
 
   // ::= <num-filenames>
   //     <uncompressed-len>
   //     <compressed-len-or-zero>
+  //     IF compressed:
+  //       <compressed-alg-id>
   //     (<compressed-filenames> | <uncompressed-filenames>)
   encodeULEB128(Filenames.size(), OS);
   encodeULEB128(FilenamesStr.size(), OS);
   encodeULEB128(doCompression ? CompressedStr.size() : 0U, OS);
+  if (doCompression)
+    encodeULEB128(static_cast<uint8_t>(CompressionScheme->getAlgorithmId()),
+                  OS);
   OS << (doCompression ? toStringRef(CompressedStr) : StringRef(FilenamesStr));
 }
 
