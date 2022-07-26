@@ -53,7 +53,7 @@ Instructions for regenerating the test:
 # cd %S/Inputs/sources_specified
 cp -r . /tmp/sources_specified
 
-clang -mllvm -enable-name-compression=false -fprofile-instr-generate \
+clang -mllvm -name-compression=none -fprofile-instr-generate \
     -fcoverage-mapping /tmp/sources_specified/main.cc -o main
 
 LLVM_PROFILE_FILE="main.raw" ./main

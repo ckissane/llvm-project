@@ -33,7 +33,6 @@
 #include "llvm/Support/Compression.h"
 #include "llvm/Support/ErrorHandling.h"
 #include "llvm/Support/ManagedStatic.h"
-#include "llvm/Support/WithColor.h"
 #include "llvm/Support/raw_ostream.h"
 #include <cassert>
 #include <climits>
@@ -1164,12 +1163,13 @@ extern template class basic_parser<compression::CompressionAlgorithm *>;
 
 static void exitWithError(Twine Message, std::string Whence = "",
                           std::string Hint = "") {
-  WithColor::error();
+  // WithColor::error();
   if (!Whence.empty())
     errs() << Whence << ": ";
   errs() << Message << "\n";
   if (!Hint.empty())
-    WithColor::note() << Hint << "\n";
+    errs() << Hint << "\n";
+  // WithColor::note() << Hint << "\n";
   ::exit(1);
 }
 template <>

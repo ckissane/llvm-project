@@ -206,7 +206,7 @@ const char *InstrProfSectNamePrefix[] = {
 namespace llvm {
 
 cl::opt<compression::CompressionAlgorithm *> InstrProfNameCompressionScheme(
-    "name-compression-scheme",
+    "name-compression",
     cl::desc("Scheme for name/filename string compression (none/zlib/ztsd), "
              "defaults to zstd"),
     cl::init(new compression::ZStdCompressionAlgorithm()));

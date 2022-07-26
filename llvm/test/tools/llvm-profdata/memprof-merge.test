@@ -21,7 +21,7 @@ Steps to collect the memprof raw profile and the instrprof raw profile:
 ```
 # Collect instrprof profile with name compression disabled since some buildbots
 # do not have zlib.
-clang -mllvm -enable-name-compression=false -fprofile-generate source.c -o instr.out
+clang -mllvm -name-compression=none -fprofile-generate source.c -o instr.out
 ./instr.out
 mv *.profraw basic.profraw
 

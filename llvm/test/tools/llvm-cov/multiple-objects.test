@@ -13,8 +13,8 @@ REPORT-NEXT: use_2.cc{{ +}}2{{ +}}0{{ +}}100.00%
 
 Instructions for regenerating the test:
 
-clang -std=c++11 -mllvm -enable-name-compression=false -fprofile-instr-generate -fcoverage-mapping use_1.cc -o use_1
-clang -std=c++11 -mllvm -enable-name-compression=false -fprofile-instr-generate -fcoverage-mapping use_2.cc -o use_2
+clang -std=c++11 -mllvm -name-compression=none -fprofile-instr-generate -fcoverage-mapping use_1.cc -o use_1
+clang -std=c++11 -mllvm -name-compression=none -fprofile-instr-generate -fcoverage-mapping use_2.cc -o use_2
 LLVM_PROFILE_FILE="use_1.raw" ./use_1
 LLVM_PROFILE_FILE="use_2.raw" ./use_2
 llvm-profdata merge use_{1,2}.raw -o merged.profdata

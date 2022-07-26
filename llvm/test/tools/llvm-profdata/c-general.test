@@ -5,7 +5,7 @@ $ SRC=path/to/llvm
 $ CFE=$SRC/tools/clang
 $ TESTDIR=$SRC/test/tools/llvm-profdata
 $ CFE_TESTDIR=$CFE/test/Profile
-$ clang -o a.out -fprofile-instr-generate $CFE_TESTDIR/c-general.c -mllvm -enable-name-compression=false
+$ clang -o a.out -fprofile-instr-generate $CFE_TESTDIR/c-general.c -mllvm -name-compression=none
 $ LLVM_PROFILE_FILE=$TESTDIR/Inputs/c-general.profraw ./a.out
 
 RUN: llvm-profdata show %p/Inputs/c-general.profraw -o - | FileCheck %s

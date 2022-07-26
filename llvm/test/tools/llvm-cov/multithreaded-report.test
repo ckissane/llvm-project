@@ -84,7 +84,7 @@ Instructions for regenerating the test:
 
 cp -r . /tmp/multithreaded_report
 
-clang++ -std=c++11 -mllvm -enable-name-compression=false \
+clang++ -std=c++11 -mllvm -name-compression=none \
     -fprofile-instr-generate -fcoverage-mapping \
     /tmp/multithreaded_report/*.cc -o main
 

@@ -1,7 +1,7 @@
 // REQUIRES: linux, lld-available
 
 // RUN: rm -rf %t.profraw
-// RUN: %clang_profgen=%t.profraw -fuse-ld=lld -fcoverage-mapping -mllvm -enable-name-compression=false -DCODE=1 -ffunction-sections -fdata-sections -Wl,--gc-sections -o %t %s
+// RUN: %clang_profgen=%t.profraw -fuse-ld=lld -fcoverage-mapping -mllvm -name-compression=none -DCODE=1 -ffunction-sections -fdata-sections -Wl,--gc-sections -o %t %s
 // RUN: %run %t
 // RUN: llvm-profdata merge -o %t.profdata %t.profraw
 // RUN: llvm-profdata show --all-functions %t.profdata | FileCheck %s -check-prefix=PROF
@@ -11,7 +11,7 @@
 // RUN: llvm-size -A %t | FileCheck %s -check-prefix=PRF_CNTS
 
 // RUN: rm -rf %t.lto.profraw
-// RUN: %clang_lto_profgen=%t.lto.profraw -fuse-ld=lld -fcoverage-mapping -mllvm -enable-name-compression=false -DCODE=1 -ffunction-sections -fdata-sections -Wl,--gc-sections -flto -o %t.lto %s
+// RUN: %clang_lto_profgen=%t.lto.profraw -fuse-ld=lld -fcoverage-mapping -mllvm -name-compression=none -DCODE=1 -ffunction-sections -fdata-sections -Wl,--gc-sections -flto -o %t.lto %s
 // RUN: %run %t.lto
 // RUN: llvm-profdata merge -o %t.lto.profdata %t.lto.profraw
 // RUN: llvm-profdata show --all-functions %t.lto.profdata | FileCheck %s -check-prefix=PROF
