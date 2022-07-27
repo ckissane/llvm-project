@@ -461,10 +461,9 @@ Error collectPGOFuncNameStrings(
     return Error::success();
   };
 
-  if (CompressionScheme->getAlgorithmId() ==
-      compression::NoneCompressionAlgorithm::AlgorithmId) {
+  if (!CompressionScheme->notNone())
     return WriteStringToResult(0, UncompressedNameStrings);
-  }
+
   SmallVector<uint8_t, 128> CompressedNameStrings;
   CompressionScheme->compress(arrayRefFromStringRef(UncompressedNameStrings),
                               CompressedNameStrings,
