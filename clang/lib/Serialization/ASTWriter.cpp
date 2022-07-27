@@ -2012,7 +2012,8 @@ emitBlob(llvm::BitstreamWriter &Stream, StringRef Blob,
   // Compress the buffer if possible. We expect that almost all PCM
   // consumers will not want its contents.
 
-  if (CompressionScheme->supported()) {
+  CompressionScheme = CompressionScheme->whenSupported();
+  if (CompressionScheme->notNone()) {
 
     SmallVector<uint8_t, 0> CompressedBuffer;
 

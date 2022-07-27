@@ -478,11 +478,10 @@ Error collectPGOFuncNameStrings(
         }
       };
 
-  if (CompressionScheme->getAlgorithmId() ==
-      compression::NoneCompressionAlgorithm::AlgorithmId) {
+  if (!CompressionScheme->notNone())
     return WriteStringToResult(0, compression::SupportCompressionType::None,
                                UncompressedNameStrings);
-  }
+
   SmallVector<uint8_t, 128> CompressedNameStrings;
   CompressionScheme->compress(arrayRefFromStringRef(UncompressedNameStrings),
                               CompressedNameStrings,
@@ -507,12 +506,8 @@ Error collectPGOFuncNameStrings(
   for (auto *NameVar : NameVars) {
     NameStrs.push_back(std::string(getPGOFuncNameVarInitializer(NameVar)));
   }
-  return collectPGOFuncNameStrings(
-      NameStrs,
-      CompressionScheme->supported()
-          ? CompressionScheme
-          : new compression::NoneCompressionAlgorithm(),
-      Result);
+  return collectPGOFuncNameStrings(NameStrs, CompressionScheme->whenSupported(),
+                                   Result);
 }
 
 Error readPGOFuncNameStrings(StringRef NameStrings, InstrProfSymtab &Symtab) {

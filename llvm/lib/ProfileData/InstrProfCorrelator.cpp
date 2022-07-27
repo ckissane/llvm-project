@@ -15,6 +15,7 @@
 #include "llvm/DebugInfo/DWARF/DWARFLocationExpression.h"
 #include "llvm/DebugInfo/DWARF/DWARFUnit.h"
 #include "llvm/Object/MachO.h"
+#include "llvm/Support/Compression.h"
 #include "llvm/Support/Debug.h"
 
 #define DEBUG_TYPE "correlator"
@@ -149,7 +150,8 @@ Error InstrProfCorrelatorImpl<IntPtrT>::correlateProfileData() {
         instrprof_error::unable_to_correlate_profile,
         "could not find any profile metadata in debug info");
   auto Result = collectPGOFuncNameStrings(
-      NamesVec, new compression::NoneCompressionAlgorithm(), Names);
+      NamesVec,
+      /*CompressionScheme=*/new compression::NoneCompressionAlgorithm(), Names);
   CounterOffsets.clear();
   NamesVec.clear();
   return Result;
