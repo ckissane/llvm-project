@@ -41,12 +41,12 @@ Error Decompressor::consumeCompressedSectionHeader(bool Is64Bit,
   uint64_t ELFCompressionSchemeId = Extractor.getUnsigned(
       &Offset, Is64Bit ? sizeof(Elf64_Word) : sizeof(Elf32_Word));
   if (ELFCompressionSchemeId == ELFCOMPRESS_ZLIB) {
-    CompressionScheme = compression::ZlibCompressionAlgorithm();
+    CompressionScheme = new compression::ZlibCompressionAlgorithm();
   } else {
     return createError("unsupported compression type");
   }
-  if (!CompressionScheme.supported())
-    return createError(CompressionScheme.name + " is not available");
+  if (!CompressionScheme->supported())
+    return createError(CompressionScheme->getName() + " is not available");
 
   // Skip Elf64_Chdr::ch_reserved field.
   if (Is64Bit)
@@ -60,6 +60,6 @@ Error Decompressor::consumeCompressedSectionHeader(bool Is64Bit,
 
 Error Decompressor::decompress(MutableArrayRef<uint8_t> Buffer) {
   size_t Size = Buffer.size();
-  return CompressionScheme.decompress(arrayRefFromStringRef(SectionData),
-                                      Buffer.data(), Size);
+  return CompressionScheme->decompress(arrayRefFromStringRef(SectionData),
+                                       Buffer.data(), Size);
 }

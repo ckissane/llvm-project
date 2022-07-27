@@ -78,9 +78,9 @@ SampleProfileWriterExtBinaryBase::markSectionStart(SecType Type,
 }
 
 std::error_code SampleProfileWriterExtBinaryBase::compressAndOutput() {
-  compression::CompressionAlgorithm CompressionScheme =
-      compression::ZlibCompressionAlgorithm();
-  if (!CompressionScheme.supported())
+  compression::CompressionAlgorithm *CompressionScheme =
+      new compression::ZlibCompressionAlgorithm();
+  if (!CompressionScheme->supported())
     return sampleprof_error::zlib_unavailable;
   std::string &UncompressedStrings =
       static_cast<raw_string_ostream *>(LocalBufStream.get())->str();
@@ -88,9 +88,9 @@ std::error_code SampleProfileWriterExtBinaryBase::compressAndOutput() {
     return sampleprof_error::success;
   auto &OS = *OutputStream;
   SmallVector<uint8_t, 128> CompressedStrings;
-  CompressionScheme.compress(arrayRefFromStringRef(UncompressedStrings),
-                             CompressedStrings,
-                             CompressionScheme.BestSizeCompression);
+  CompressionScheme->compress(arrayRefFromStringRef(UncompressedStrings),
+                              CompressedStrings,
+                              CompressionScheme->getBestSizeLevel());
   encodeULEB128(UncompressedStrings.size(), OS);
   encodeULEB128(CompressedStrings.size(), OS);
   OS << toStringRef(CompressedStrings);

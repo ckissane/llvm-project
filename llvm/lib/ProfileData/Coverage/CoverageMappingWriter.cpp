@@ -47,14 +47,18 @@ void CoverageFilenamesSectionWriter::write(raw_ostream &OS, bool Compress) {
   }
 
   SmallVector<uint8_t, 128> CompressedStr;
-  compression::CompressionAlgorithm CompressionScheme =
-      compression::ZlibCompressionAlgorithm();
-  bool doCompression =
-      Compress && CompressionScheme.supported() && DoInstrProfNameCompression;
+  compression::CompressionAlgorithm *CompressionScheme =
+      new compression::ZlibCompressionAlgorithm();
+
+  CompressionScheme =
+      CompressionScheme->when(Compress && DoInstrProfNameCompression)
+          ->whenSupported();
+  bool doCompression = CompressionScheme->notNone();
+
   if (doCompression)
-    CompressionScheme.compress(arrayRefFromStringRef(FilenamesStr),
-                               CompressedStr,
-                               CompressionScheme.BestSizeCompression);
+    CompressionScheme->compress(arrayRefFromStringRef(FilenamesStr),
+                                CompressedStr,
+                                CompressionScheme->getBestSizeLevel());
 
   // ::= <num-filenames>
   //     <uncompressed-len>
