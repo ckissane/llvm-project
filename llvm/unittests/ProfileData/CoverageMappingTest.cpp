@@ -932,7 +932,11 @@ TEST(CoverageMappingTest, filename_roundtrip) {
     {
       raw_string_ostream OS(EncodedFilenames);
       CoverageFilenamesSectionWriter Writer(Paths);
-      Writer.write(OS, Compress);
+      Writer.write(
+          OS, Compress ? (compression::CompressionAlgorithm
+                              *)new compression::ZlibCompressionAlgorithm()
+                       : (compression::CompressionAlgorithm
+                              *)new compression::NoneCompressionAlgorithm());
     }
 
     std::vector<std::string> ReadFilenames;
@@ -956,7 +960,11 @@ TEST(CoverageMappingTest, filename_compilation_dir) {
     {
       raw_string_ostream OS(EncodedFilenames);
       CoverageFilenamesSectionWriter Writer(Paths);
-      Writer.write(OS, Compress);
+      Writer.write(
+          OS, Compress ? (compression::CompressionAlgorithm
+                              *)new compression::ZlibCompressionAlgorithm()
+                       : (compression::CompressionAlgorithm
+                              *)new compression::NoneCompressionAlgorithm());
     }
 
     StringRef CompilationDir = "out";
