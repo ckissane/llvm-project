@@ -405,6 +405,7 @@ mlir_c_api_cc_library(
     ],
     includes = ["include"],
     deps = [
+        ":AsmParser",
         ":ConversionPassIncGen",
         ":FuncDialect",
         ":InferTypeOpInterface",
@@ -1832,6 +1833,7 @@ cc_library(
         ":AffineAnalysis",
         ":AffineDialect",
         ":ArithmeticDialect",
+        ":ArithmeticUtils",
         ":BufferizationDialect",
         ":BufferizationTransforms",
         ":DialectUtils",
@@ -3244,9 +3246,9 @@ cc_library(
     ),
     includes = ["include"],
     deps = [
+        ":AsmParser",
         ":IR",
         ":MlirLspServerSupportLib",
-        ":Parser",
         ":Support",
         "//llvm:Support",
     ],
@@ -3277,11 +3279,29 @@ cc_library(
 )
 
 cc_library(
-    name = "ParserTokenKinds",
+    name = "AsmParserTokenKinds",
     # strip_include_prefix does not apply to textual_hdrs.
-    hdrs = ["lib/Parser/TokenKinds.def"],
-    strip_include_prefix = "lib/Parser",
-    textual_hdrs = ["lib/Parser/TokenKinds.def"],
+    hdrs = ["lib/AsmParser/TokenKinds.def"],
+    strip_include_prefix = "lib/AsmParser",
+    textual_hdrs = ["lib/AsmParser/TokenKinds.def"],
+)
+
+cc_library(
+    name = "AsmParser",
+    srcs = glob([
+        "lib/AsmParser/*.cpp",
+        "lib/AsmParser/*.h",
+    ]),
+    hdrs = glob([
+        "include/mlir/AsmParser/*.h",
+    ]),
+    includes = ["include"],
+    deps = [
+        ":AsmParserTokenKinds",
+        ":IR",
+        ":Support",
+        "//llvm:Support",
+    ],
 )
 
 cc_library(
@@ -3295,8 +3315,8 @@ cc_library(
     ]),
     includes = ["include"],
     deps = [
+        ":AsmParser",
         ":IR",
-        ":ParserTokenKinds",
         ":Support",
         "//llvm:Support",
     ],
@@ -3590,6 +3610,7 @@ cc_library(
     includes = ["include"],
     deps = [
         ":ArithmeticDialect",
+        ":AsmParser",
         ":AsyncDialect",
         ":ControlFlowDialect",
         ":DLTIDialect",
@@ -3598,7 +3619,6 @@ cc_library(
         ":GPUPassIncGen",
         ":MemRefDialect",
         ":IR",
-        ":Parser",
         ":Pass",
         ":ROCDLToLLVMIRTranslation",
         ":SCFDialect",
@@ -6592,8 +6612,8 @@ cc_binary(
         "tools/mlir-linalg-ods-gen/mlir-linalg-ods-yaml-gen.cpp",
     ],
     deps = [
+        ":AsmParser",
         ":IR",
-        ":Parser",
         ":Support",
         "//llvm:Support",
         "//llvm:TableGen",
@@ -7361,6 +7381,7 @@ cc_library(
         ":AffineDialect",
         ":ArithmeticDialect",
         ":ArithmeticUtils",
+        ":AsmParser",
         ":BufferizationDialect",
         ":ComplexDialect",
         ":ControlFlowInterfaces",
@@ -7399,6 +7420,7 @@ cc_library(
     deps = [
         ":AffineDialect",
         ":ArithmeticDialect",
+        ":AsmParser",
         ":ControlFlowDialect",
         ":IR",
         ":LinalgDialect",
@@ -8096,6 +8118,24 @@ td_library(
 )
 
 gentbl_cc_library(
+    name = "ComplexAttributesIncGen",
+    strip_include_prefix = "include",
+    tbl_outs = [
+        (
+            ["-gen-attrdef-decls"],
+            "include/mlir/Dialect/Complex/IR/ComplexAttributes.h.inc",
+        ),
+        (
+            ["-gen-attrdef-defs"],
+            "include/mlir/Dialect/Complex/IR/ComplexAttributes.cpp.inc",
+        ),
+    ],
+    tblgen = ":mlir-tblgen",
+    td_file = "include/mlir/Dialect/Complex/IR/ComplexAttributes.td",
+    deps = [":ComplexOpsTdFiles"],
+)
+
+gentbl_cc_library(
     name = "ComplexBaseIncGen",
     strip_include_prefix = "include",
     tbl_outs = [
@@ -8149,6 +8189,7 @@ cc_library(
     includes = ["include"],
     deps = [
         ":ArithmeticDialect",
+        ":ComplexAttributesIncGen",
         ":ComplexBaseIncGen",
         ":ComplexOpsIncGen",
         ":IR",
@@ -9199,11 +9240,11 @@ cc_library(
     hdrs = glob(["include/mlir/Tools/PDLL/CodeGen/*.h"]),
     includes = ["include"],
     deps = [
+        ":AsmParser",
         ":IR",
         ":PDLDialect",
         ":PDLLAST",
         ":PDLLODS",
-        ":Parser",
         ":Support",
         "//llvm:Support",
     ],
