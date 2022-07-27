@@ -49,7 +49,7 @@ void CoverageFilenamesSectionWriter::write(
 
   SmallVector<uint8_t, 128> CompressedStr;
   bool doCompression = (CompressionScheme->getAlgorithmId() !=
-                        compression::NoneCompressionAlgorithm().AlgorithmId) &&
+                        compression::NoneCompressionAlgorithm::AlgorithmId) &&
                        CompressionScheme->supported();
   if (doCompression)
     CompressionScheme->compress(arrayRefFromStringRef(FilenamesStr),

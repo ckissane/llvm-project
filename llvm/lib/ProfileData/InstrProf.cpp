@@ -479,7 +479,7 @@ Error collectPGOFuncNameStrings(
       };
 
   if (CompressionScheme->getAlgorithmId() ==
-      compression::NoneCompressionAlgorithm().AlgorithmId) {
+      compression::NoneCompressionAlgorithm::AlgorithmId) {
     return WriteStringToResult(0, compression::SupportCompressionType::None,
                                UncompressedNameStrings);
   }
