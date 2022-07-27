@@ -196,7 +196,8 @@ public:
     }
     llvm::compression::CompressionAlgorithm *CompressionScheme =
         StringTableCompressionScheme;
-    if (CompressionScheme->supported()) {
+    CompressionScheme = CompressionScheme->whenSupported();
+    if (CompressionScheme->notNone()) {
       llvm::SmallVector<uint8_t, 0> Compressed;
       CompressionScheme->compress(llvm::arrayRefFromStringRef(RawTable),
                                   Compressed);

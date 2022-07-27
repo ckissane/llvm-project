@@ -57,6 +57,11 @@ public:
   virtual Error decompress(ArrayRef<uint8_t> Input,
                            SmallVectorImpl<uint8_t> &UncompressedBuffer,
                            size_t UncompressedSize) = 0;
+
+  virtual CompressionAlgorithm *when(bool useCompression) = 0;
+  virtual CompressionAlgorithm *whenSupported() = 0;
+
+  virtual bool notNone() = 0;
 };
 
 template <class CompressionAlgorithmType>
@@ -105,6 +110,16 @@ public:
     if (UncompressedSize < UncompressedBuffer.size())
       UncompressedBuffer.truncate(UncompressedSize);
     return E;
+  }
+
+  virtual CompressionAlgorithm *when(bool useCompression);
+  virtual CompressionAlgorithm *whenSupported() {
+    return this->when(CompressionAlgorithmType::Supported());
+  }
+
+  virtual bool notNone() {
+    return CompressionAlgorithmType::AlgorithmId !=
+           SupportCompressionType::None;
   }
 };
 
@@ -182,6 +197,8 @@ public:
 
 llvm::compression::CompressionAlgorithm *
 CompressionAlgorithmFromId(uint8_t CompressionSchemeId);
+llvm::compression::CompressionAlgorithm *
+CompressionAlgorithmFromId(SupportCompressionType CompressionSchemeId);
 
 } // End of namespace compression
 

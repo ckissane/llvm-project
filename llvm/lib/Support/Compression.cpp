@@ -27,6 +27,15 @@
 using namespace llvm;
 using namespace llvm::compression;
 
+template <class CompressionAlgorithmType>
+CompressionAlgorithm *
+CompressionAlgorithmImpl<CompressionAlgorithmType>::when(bool useCompression) {
+  if (useCompression) {
+    return this;
+  }
+  return new NoneCompressionAlgorithm();
+}
+
 constexpr SupportCompressionType UnknownCompressionAlgorithm::AlgorithmId;
 constexpr StringRef UnknownCompressionAlgorithm::Name;
 constexpr int UnknownCompressionAlgorithm::BestSpeedCompression;
@@ -244,4 +253,10 @@ llvm::compression::CompressionAlgorithmFromId(uint8_t CompressionSchemeId) {
     break;
   }
   return CompressionScheme;
+}
+
+llvm::compression::CompressionAlgorithm *
+llvm::compression::CompressionAlgorithmFromId(
+    llvm::compression::SupportCompressionType CompressionSchemeId) {
+  return CompressionAlgorithmFromId(static_cast<uint8_t>(CompressionSchemeId));
 }
