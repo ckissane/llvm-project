@@ -47,13 +47,13 @@ static void testCompressionAlgorithm(
 
 #if LLVM_ENABLE_ZLIB
 static void testZlibCompression(StringRef Input, int Level) {
-  testCompressionAlgorithm(Input, Level, new ZlibCompressionAlgorithm(),
+  testCompressionAlgorithm(Input, Level, ZlibCompression,
                            "zlib error: Z_BUF_ERROR");
 }
 
 TEST(CompressionTest, Zlib) {
   compression::CompressionAlgorithm *CompressionScheme =
-      new compression::ZlibCompressionAlgorithm();
+      compression::ZlibCompression;
   testZlibCompression("", CompressionScheme->getDefaultLevel());
 
   testZlibCompression("hello, world!", CompressionScheme->getBestSizeLevel());
@@ -75,13 +75,13 @@ TEST(CompressionTest, Zlib) {
 #if LLVM_ENABLE_ZSTD
 
 static void testZStdCompression(StringRef Input, int Level) {
-  testCompressionAlgorithm(Input, Level, new ZStdCompressionAlgorithm(),
+  testCompressionAlgorithm(Input, Level, ZStdCompression,
                            "Destination buffer is too small");
 }
 
 TEST(CompressionTest, Zstd) {
   compression::CompressionAlgorithm *CompressionScheme =
-      new compression::ZStdCompressionAlgorithm();
+      compression::ZStdCompression;
   testZStdCompression("", CompressionScheme->getDefaultLevel());
 
   testZStdCompression("hello, world!", CompressionScheme->getBestSizeLevel());

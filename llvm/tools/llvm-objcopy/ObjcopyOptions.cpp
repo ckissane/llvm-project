@@ -734,13 +734,13 @@ objcopy::parseObjcopyOptions(ArrayRef<const char *> RawArgsArr,
     case DebugCompressionType::None:
       break;
     case DebugCompressionType::Z:
-      if (!compression::ZlibCompressionAlgorithm().supported())
+      if (!compression::ZlibCompression->supported())
         return createStringError(
             errc::invalid_argument,
             "LLVM was not compiled with LLVM_ENABLE_ZLIB: can not compress");
       break;
     case DebugCompressionType::ZStd:
-      if (!compression::ZStdCompressionAlgorithm().supported())
+      if (!compression::ZStdCompression->supported())
         return createStringError(
             errc::invalid_argument,
             "LLVM was not compiled with LLVM_ENABLE_ZSTD: can not compress");

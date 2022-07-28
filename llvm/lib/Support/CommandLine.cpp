@@ -1929,10 +1929,10 @@ bool parser<compression::CompressionAlgorithm *>::parse(
     Option &O, StringRef, StringRef Arg,
     compression::CompressionAlgorithm *&Value) {
   Value = llvm::StringSwitch<compression::CompressionAlgorithm *>(Arg.str())
-              .Case("none", new compression::NoneCompressionAlgorithm())
-              .Case("zlib", new compression::ZlibCompressionAlgorithm())
-              .Case("zstd", new compression::ZStdCompressionAlgorithm())
-              .Default(new compression::UnknownCompressionAlgorithm());
+              .Case("none", compression::NoneCompression)
+              .Case("zlib", compression::ZlibCompression)
+              .Case("zstd", compression::ZStdCompression)
+              .Default(compression::UnknownCompression);
   if (Value->getAlgorithmId() ==
       compression::UnknownCompressionAlgorithm::AlgorithmId) {
 

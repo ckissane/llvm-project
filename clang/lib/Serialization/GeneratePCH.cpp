@@ -30,8 +30,7 @@ PCHGenerator::PCHGenerator(
     : PP(PP), OutputFile(OutputFile), isysroot(isysroot.str()),
       SemaPtr(nullptr), Buffer(std::move(Buffer)), Stream(this->Buffer->Data),
       Writer(Stream, this->Buffer->Data, ModuleCache, Extensions,
-             new llvm::compression::ZlibCompressionAlgorithm(),
-             IncludeTimestamps),
+             llvm::compression::ZlibCompression, IncludeTimestamps),
       AllowASTWithErrors(AllowASTWithErrors),
       ShouldCacheASTInMemory(ShouldCacheASTInMemory) {
   this->Buffer->IsComplete = false;

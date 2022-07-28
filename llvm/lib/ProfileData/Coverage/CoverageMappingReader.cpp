@@ -120,13 +120,13 @@ Error RawCoverageFilenamesReader::read(CovMapVersion Version) {
 
   if (CompressedLen > 0) {
     compression::CompressionAlgorithm *CompressionScheme =
-        new compression::ZlibCompressionAlgorithm();
+        compression::ZlibCompression;
     if (Version >= CovMapVersion::Version7) {
       uint64_t CompressionSchemeId;
       if (auto Err = readULEB128(CompressionSchemeId))
         return Err;
       CompressionScheme =
-          compression::CompressionAlgorithmFromId(CompressionSchemeId);
+          compression::getCompressionAlgorithm(CompressionSchemeId);
     }
     if (!CompressionScheme->supported())
       return make_error<CoverageMapError>(

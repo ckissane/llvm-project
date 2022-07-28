@@ -1469,7 +1469,7 @@ bool ASTReader::ReadSLocEntry(int ID) {
                     llvm::compression::SupportCompressionType::Zlib)
               : Record[1];
       llvm::compression::CompressionAlgorithm *CompressionScheme =
-          llvm::compression::CompressionAlgorithmFromId(CompressionSchemeId);
+          llvm::compression::getCompressionAlgorithm(CompressionSchemeId);
       if (!CompressionScheme->supported()) {
         Error("compression class " +
               (CompressionScheme->getName() + " is not available").str());

@@ -29,7 +29,7 @@ namespace clang {
 namespace clangd {
 
 llvm::compression::CompressionAlgorithm *StringTableCompressionScheme =
-    new llvm::compression::ZlibCompressionAlgorithm();
+    llvm::compression::ZlibCompression;
 
 namespace {
 

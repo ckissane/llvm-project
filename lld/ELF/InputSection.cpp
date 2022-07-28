@@ -116,11 +116,11 @@ static void uncompressAux(const InputSectionBase *sec, uint8_t *out,
       reinterpret_cast<const typename ELFT::Chdr *>(sec->rawData.data());
   ArrayRef<uint8_t> compressed =
       sec->rawData.slice(sizeof(typename ELFT::Chdr));
-  if (Error e = (hdr->ch_type == ELFCOMPRESS_ZLIB
-                     ? compression::ZlibCompressionAlgorithm().decompress(
-                           compressed, out, size)
-                     : compression::ZStdCompressionAlgorithm().decompress(
-                           compressed, out, size)))
+  if (Error e =
+          (hdr->ch_type == ELFCOMPRESS_ZLIB
+               ? compression::ZlibCompression->decompress(compressed, out, size)
+               : compression::ZStdCompression->decompress(compressed, out,
+                                                          size)))
     fatal(toString(sec) +
           ": uncompress failed: " + llvm::toString(std::move(e)));
 }
@@ -221,11 +221,11 @@ template <typename ELFT> void InputSectionBase::parseCompressedHeader() {
 
   auto *hdr = reinterpret_cast<const typename ELFT::Chdr *>(rawData.data());
   if (hdr->ch_type == ELFCOMPRESS_ZLIB) {
-    if (!compression::ZlibCompressionAlgorithm().supported())
+    if (!compression::ZlibCompression->supported())
       error(toString(this) + " is compressed with ELFCOMPRESS_ZLIB, but lld is "
                              "not built with zlib support");
   } else if (hdr->ch_type == ELFCOMPRESS_ZSTD) {
-    if (!compression::ZStdCompressionAlgorithm().supported())
+    if (!compression::ZStdCompression->supported())
       error(toString(this) + " is compressed with ELFCOMPRESS_ZSTD, but lld is "
                              "not built with zstd support");
   } else {
@@ -1236,23 +1236,23 @@ template <class ELFT> void InputSection::writeTo(uint8_t *buf) {
     auto *hdr = reinterpret_cast<const typename ELFT::Chdr *>(rawData.data());
     size_t size = uncompressedSize;
     if (hdr->ch_type == ELFCOMPRESS_ZLIB) {
-      if (!compression::ZlibCompressionAlgorithm().supported()) {
+      if (!compression::ZlibCompression->supported()) {
         error(toString(this) +
               " is compressed with ELFCOMPRESS_ZLIB, but lld is "
               "not built with zlib support");
       } else {
-        if (Error e = compression::ZlibCompressionAlgorithm().decompress(
+        if (Error e = compression::ZlibCompression->decompress(
                 rawData.slice(sizeof(typename ELFT::Chdr)), buf, size))
           fatal(toString(this) +
                 ": uncompress failed: " + llvm::toString(std::move(e)));
       }
     } else if (hdr->ch_type == ELFCOMPRESS_ZSTD) {
-      if (!compression::ZStdCompressionAlgorithm().supported()) {
+      if (!compression::ZStdCompression->supported()) {
         error(toString(this) +
               " is compressed with ELFCOMPRESS_ZSTD, but lld is "
               "not built with zstd support");
       } else {
-        if (Error e = compression::ZStdCompressionAlgorithm().decompress(
+        if (Error e = compression::ZStdCompression->decompress(
                 rawData.slice(sizeof(typename ELFT::Chdr)), buf, size))
           fatal(toString(this) +
                 ": uncompress failed: " + llvm::toString(std::move(e)));

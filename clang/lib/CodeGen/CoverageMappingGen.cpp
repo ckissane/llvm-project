@@ -1706,7 +1706,7 @@ void CoverageMappingModuleGen::emit() {
   {
     llvm::raw_string_ostream OS(Filenames);
     CoverageFilenamesSectionWriter(FilenameStrs)
-        .write(OS, new llvm::compression::ZlibCompressionAlgorithm());
+        .write(OS, llvm::compression::ZlibCompression);
   }
   auto *FilenamesVal =
       llvm::ConstantDataArray::getString(Ctx, Filenames, false);

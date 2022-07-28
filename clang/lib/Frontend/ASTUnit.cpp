@@ -222,9 +222,8 @@ struct ASTUnit::ASTWriterData {
   ASTWriter Writer;
 
   ASTWriterData(InMemoryModuleCache &ModuleCache)
-      : Stream(Buffer),
-        Writer(Stream, Buffer, ModuleCache, {},
-               new llvm::compression::ZlibCompressionAlgorithm()) {}
+      : Stream(Buffer), Writer(Stream, Buffer, ModuleCache, {},
+                               llvm::compression::ZlibCompression) {}
 };
 
 void ASTUnit::clearFileLevelDecls() {
@@ -2327,7 +2326,7 @@ bool ASTUnit::serialize(raw_ostream &OS) {
   llvm::BitstreamWriter Stream(Buffer);
   InMemoryModuleCache ModuleCache;
   ASTWriter Writer(Stream, Buffer, ModuleCache, {},
-                   new llvm::compression::ZlibCompressionAlgorithm());
+                   llvm::compression::ZlibCompression);
   return serializeUnit(Writer, Buffer, getSema(), hasErrors, OS);
 }
 

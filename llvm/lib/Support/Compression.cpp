@@ -27,13 +27,34 @@
 using namespace llvm;
 using namespace llvm::compression;
 
+ZStdCompressionAlgorithm
+    *llvm::compression::ZStdCompressionAlgorithm::Instance =
+        new ZStdCompressionAlgorithm();
+ZlibCompressionAlgorithm
+    *llvm::compression::ZlibCompressionAlgorithm::Instance =
+        new ZlibCompressionAlgorithm();
+UnknownCompressionAlgorithm
+    *llvm::compression::UnknownCompressionAlgorithm::Instance =
+        new UnknownCompressionAlgorithm();
+NoneCompressionAlgorithm
+    *llvm::compression::NoneCompressionAlgorithm::Instance =
+        new NoneCompressionAlgorithm();
+
+// const static NoneCompressionAlgorithm* llvm::compression::NoneCompression =
+// NoneCompressionAlgorithm::Instance; const static UnknownCompressionAlgorithm*
+// llvm::compression::UnknownCompression =
+// UnknownCompressionAlgorithm::Instance; const static ZStdCompressionAlgorithm*
+// llvm::compression::ZStdCompression = ZStdCompressionAlgorithm::Instance;
+// const static ZlibCompressionAlgorithm* llvm::compression::ZlibCompression =
+// ZlibCompressionAlgorithm::Instance;
+
 template <class CompressionAlgorithmType>
 CompressionAlgorithm *
 CompressionAlgorithmImpl<CompressionAlgorithmType>::when(bool useCompression) {
   if (useCompression) {
     return this;
   }
-  return new NoneCompressionAlgorithm();
+  return (CompressionAlgorithm *)NoneCompression;
 }
 
 constexpr SupportCompressionType UnknownCompressionAlgorithm::AlgorithmId;
@@ -233,21 +254,25 @@ Error ZStdCompressionAlgorithm::Decompress(ArrayRef<uint8_t> Input,
 #endif
 
 llvm::compression::CompressionAlgorithm *
-llvm::compression::CompressionAlgorithmFromId(uint8_t CompressionSchemeId) {
+llvm::compression::getCompressionAlgorithm(uint8_t CompressionSchemeId) {
   llvm::compression::CompressionAlgorithm *CompressionScheme =
-      new llvm::compression::UnknownCompressionAlgorithm();
+      (llvm::compression::CompressionAlgorithm *)
+          llvm::compression::UnknownCompression;
   switch (CompressionSchemeId) {
   case static_cast<uint8_t>(
       llvm::compression::NoneCompressionAlgorithm::AlgorithmId):
-    CompressionScheme = new llvm::compression::NoneCompressionAlgorithm();
+    CompressionScheme = (llvm::compression::CompressionAlgorithm *)
+        llvm::compression::NoneCompression;
     break;
   case static_cast<uint8_t>(
       llvm::compression::ZlibCompressionAlgorithm::AlgorithmId):
-    CompressionScheme = new llvm::compression::ZlibCompressionAlgorithm();
+    CompressionScheme = (llvm::compression::CompressionAlgorithm *)
+        llvm::compression::ZlibCompression;
     break;
   case static_cast<uint8_t>(
       llvm::compression::ZStdCompressionAlgorithm::AlgorithmId):
-    CompressionScheme = new llvm::compression::ZStdCompressionAlgorithm();
+    CompressionScheme = (llvm::compression::CompressionAlgorithm *)
+        llvm::compression::ZStdCompression;
     break;
   default:
     break;
@@ -256,7 +281,7 @@ llvm::compression::CompressionAlgorithmFromId(uint8_t CompressionSchemeId) {
 }
 
 llvm::compression::CompressionAlgorithm *
-llvm::compression::CompressionAlgorithmFromId(
+llvm::compression::getCompressionAlgorithm(
     llvm::compression::SupportCompressionType CompressionSchemeId) {
-  return CompressionAlgorithmFromId(static_cast<uint8_t>(CompressionSchemeId));
+  return getCompressionAlgorithm(static_cast<uint8_t>(CompressionSchemeId));
 }

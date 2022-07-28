@@ -1146,7 +1146,7 @@ static void RenderDebugInfoCompressionArgs(const ArgList &Args,
         D.Diag(diag::warn_debug_compression_unavailable);
       }
     } else if (Value == "zstd") {
-      if (llvm::compression::ZStdCompressionAlgorithm().supported()) {
+      if (llvm::compression::ZStdCompression->supported()) {
         CmdArgs.push_back(
             Args.MakeArgString("--compress-debug-sections=" + Twine(Value)));
       } else {

@@ -160,9 +160,8 @@ void ProfileGeneratorBase::write(std::unique_ptr<SampleProfileWriter> Writer,
 }
 
 void ProfileGeneratorBase::write() {
-  auto WriterOrErr =
-      SampleProfileWriter::create(OutputFilename, OutputFormat,
-                                  new compression::ZlibCompressionAlgorithm());
+  auto WriterOrErr = SampleProfileWriter::create(OutputFilename, OutputFormat,
+                                                 compression::ZlibCompression);
   if (std::error_code EC = WriterOrErr.getError())
     exitWithError(EC, OutputFilename);
 

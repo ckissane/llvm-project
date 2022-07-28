@@ -829,9 +829,8 @@ mergeSampleProfile(const WeightedFileVector &Inputs, SymbolRemapper *Remapper,
     ProfileIsCS = FunctionSamples::ProfileIsCS = false;
   }
 
-  auto WriterOrErr =
-      SampleProfileWriter::create(OutputFilename, FormatMap[OutputFormat],
-                                  new compression::ZlibCompressionAlgorithm());
+  auto WriterOrErr = SampleProfileWriter::create(
+      OutputFilename, FormatMap[OutputFormat], compression::ZlibCompression);
   if (std::error_code EC = WriterOrErr.getError())
     exitWithErrorCode(EC, OutputFilename);
 

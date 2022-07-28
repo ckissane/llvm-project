@@ -41,9 +41,9 @@ Error Decompressor::consumeCompressedSectionHeader(bool Is64Bit,
   uint64_t ELFCompressionSchemeId = Extractor.getUnsigned(
       &Offset, Is64Bit ? sizeof(Elf64_Word) : sizeof(Elf32_Word));
   if (ELFCompressionSchemeId == ELFCOMPRESS_ZLIB) {
-    CompressionScheme = new compression::ZlibCompressionAlgorithm();
+    CompressionScheme = compression::ZlibCompression;
   } else if (ELFCompressionSchemeId == ELFCOMPRESS_ZSTD) {
-    CompressionScheme = new compression::ZStdCompressionAlgorithm();
+    CompressionScheme = compression::ZStdCompression;
   } else {
     return createError("unsupported compression type");
   }

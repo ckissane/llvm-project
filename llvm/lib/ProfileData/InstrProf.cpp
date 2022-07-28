@@ -209,7 +209,7 @@ cl::opt<compression::CompressionAlgorithm *> InstrProfNameCompressionScheme(
     "name-compression",
     cl::desc("Scheme for name/filename string compression (none/zlib/ztsd), "
              "defaults to zstd"),
-    cl::init(new compression::ZStdCompressionAlgorithm()));
+    cl::init(compression::ZStdCompression));
 
 std::string getInstrProfSectionName(InstrProfSectKind IPSK,
                                     Triple::ObjectFormatType OF,
@@ -521,12 +521,12 @@ Error readPGOFuncNameStrings(StringRef NameStrings, InstrProfSymtab &Symtab) {
     P += N;
     bool isCompressed = (CompressedSize != 0);
     compression::CompressionAlgorithm *CompressionScheme =
-        new compression::NoneCompressionAlgorithm();
+        compression::NoneCompression;
     if (isCompressed) {
       uint64_t CompressionSchemeId = decodeULEB128(P, &N);
       P += N;
       CompressionScheme =
-          compression::CompressionAlgorithmFromId(CompressionSchemeId);
+          compression::getCompressionAlgorithm(CompressionSchemeId);
     }
     SmallVector<uint8_t, 128> UncompressedNameStrings;
     StringRef NameStrings;

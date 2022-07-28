@@ -882,7 +882,7 @@ std::error_code SampleProfileReaderExtBinaryBase::decompressSection(
     return EC;
 
   compression::CompressionAlgorithm *CompressionScheme =
-      compression::CompressionAlgorithmFromId(*CompressionSchemeId);
+      compression::getCompressionAlgorithm(*CompressionSchemeId);
   if (!CompressionScheme->supported())
     return sampleprof_error::zlib_unavailable;
 
