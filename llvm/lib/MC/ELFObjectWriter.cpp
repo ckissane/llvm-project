@@ -863,7 +863,7 @@ void ELFWriter::writeSectionData(const MCAssembler &Asm, MCSection &Sec,
 
   SmallVector<uint8_t, 128> Compressed;
   const uint32_t ChType = ELF::ELFCOMPRESS_ZLIB;
-  compression::ZlibCompressionAlgorithm().compress(
+  compression::ZlibCompression->compress(
       makeArrayRef(reinterpret_cast<uint8_t *>(UncompressedData.data()),
                    UncompressedData.size()),
       Compressed);

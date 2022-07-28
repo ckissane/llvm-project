@@ -191,7 +191,7 @@ public:
       RawTable.push_back(0);
     }
     llvm::compression::CompressionAlgorithm *CompressionScheme =
-        new llvm::compression::ZlibCompressionAlgorithm();
+        llvm::compression::ZlibCompression;
     CompressionScheme = CompressionScheme->whenSupported();
     if (CompressionScheme->notNone()) {
       llvm::SmallVector<uint8_t, 0> Compressed;
@@ -229,7 +229,7 @@ llvm::Expected<StringTableIn> readStringTable(llvm::StringRef Data) {
     Uncompressed = R.rest();
   else {
     llvm::compression::CompressionAlgorithm *CompressionScheme =
-        new llvm::compression::ZlibCompressionAlgorithm();
+        llvm::compression::ZlibCompression;
     if (CompressionScheme->supported()) {
       // Don't allocate a massive buffer if UncompressedSize was corrupted
       // This is effective for sharded index, but not big monolithic ones, as

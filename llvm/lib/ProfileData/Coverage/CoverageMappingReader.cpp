@@ -119,7 +119,7 @@ Error RawCoverageFilenamesReader::read(CovMapVersion Version) {
     return Err;
 
   if (CompressedLen > 0) {
-    if (!compression::ZlibCompressionAlgorithm().supported())
+    if (!compression::ZlibCompression->supported())
       return make_error<CoverageMapError>(
           coveragemap_error::decompression_failed);
 
@@ -129,7 +129,7 @@ Error RawCoverageFilenamesReader::read(CovMapVersion Version) {
     // Read compressed filenames.
     StringRef CompressedFilenames = Data.substr(0, CompressedLen);
     Data = Data.substr(CompressedLen);
-    auto Err = compression::ZlibCompressionAlgorithm().decompress(
+    auto Err = compression::ZlibCompression->decompress(
         arrayRefFromStringRef(CompressedFilenames), StorageBuf,
         UncompressedLen);
     if (Err) {

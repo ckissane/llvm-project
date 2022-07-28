@@ -447,7 +447,7 @@ Error ELFSectionWriter<ELFT>::visit(const DecompressedSection &Sec) {
 
   switch (CompressionType) {
   case DebugCompressionType::Z:
-    if (Error Err1 = compression::ZlibCompressionAlgorithm().decompress(
+    if (Error Err1 = compression::ZlibCompression->decompress(
             Compressed, DecompressedContent, static_cast<size_t>(Sec.Size))) {
       return createStringError(errc::invalid_argument,
                                "'" + Sec.Name +
@@ -529,8 +529,7 @@ CompressedSection::CompressedSection(const SectionBase &Sec,
       DecompressedSize(Sec.OriginalData.size()), DecompressedAlign(Sec.Align) {
   switch (CompressionType) {
   case DebugCompressionType::Z:
-    compression::ZlibCompressionAlgorithm().compress(OriginalData,
-                                                     CompressedData);
+    compression::ZlibCompression->compress(OriginalData, CompressedData);
     break;
   case DebugCompressionType::None:
     break;

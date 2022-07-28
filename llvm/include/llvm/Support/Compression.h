@@ -62,6 +62,10 @@ public:
 
   virtual bool notNone() = 0;
 };
+class NoneCompressionAlgorithm;
+class UnknownCompressionAlgorithm;
+class ZStdCompressionAlgorithm;
+class ZlibCompressionAlgorithm;
 
 template <class CompressionAlgorithmType>
 class CompressionAlgorithmImpl : public CompressionAlgorithm {
@@ -137,6 +141,9 @@ public:
                           size_t &UncompressedSize);
   static bool Supported();
 
+  static ZStdCompressionAlgorithm *Instance;
+
+protected:
   constexpr ZStdCompressionAlgorithm(){};
 };
 
@@ -155,6 +162,9 @@ public:
                           size_t &UncompressedSize);
   static bool Supported();
 
+  static ZlibCompressionAlgorithm *Instance;
+
+protected:
   constexpr ZlibCompressionAlgorithm(){};
 };
 
@@ -173,11 +183,14 @@ public:
                           size_t &UncompressedSize);
   static bool Supported();
 
+  static UnknownCompressionAlgorithm *Instance;
+
+protected:
   constexpr UnknownCompressionAlgorithm(){};
 };
-
 class NoneCompressionAlgorithm
     : public CompressionAlgorithmImpl<NoneCompressionAlgorithm> {
+
 public:
   constexpr static SupportCompressionType AlgorithmId =
       SupportCompressionType::None;
@@ -191,13 +204,25 @@ public:
                           size_t &UncompressedSize);
   static bool Supported();
 
+  static NoneCompressionAlgorithm *Instance;
+
+protected:
   constexpr NoneCompressionAlgorithm(){};
 };
 
+static NoneCompressionAlgorithm *NoneCompression =
+    NoneCompressionAlgorithm::Instance;
+static UnknownCompressionAlgorithm *UnknownCompression =
+    UnknownCompressionAlgorithm::Instance;
+static ZStdCompressionAlgorithm *ZStdCompression =
+    ZStdCompressionAlgorithm::Instance;
+static ZlibCompressionAlgorithm *ZlibCompression =
+    ZlibCompressionAlgorithm::Instance;
+
 llvm::compression::CompressionAlgorithm *
-CompressionAlgorithmFromId(uint8_t CompressionSchemeId);
+getCompressionAlgorithm(SupportCompressionType CompressionSchemeId);
 llvm::compression::CompressionAlgorithm *
-CompressionAlgorithmFromId(SupportCompressionType CompressionSchemeId);
+getCompressionAlgorithm(uint8_t CompressionSchemeId);
 
 } // End of namespace compression
 

@@ -2001,7 +2001,7 @@ static void emitBlob(llvm::BitstreamWriter &Stream, StringRef Blob,
   // Compress the buffer if possible. We expect that almost all PCM
   // consumers will not want its contents.
   llvm::compression::CompressionAlgorithm *CompressionScheme =
-      new llvm::compression::ZlibCompressionAlgorithm();
+      llvm::compression::ZlibCompression;
 
   CompressionScheme = CompressionScheme->whenSupported();
   if (CompressionScheme->notNone()) {

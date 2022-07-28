@@ -487,7 +487,7 @@ Error collectPGOFuncNameStrings(ArrayRef<GlobalVariable *> NameVars,
     NameStrs.push_back(std::string(getPGOFuncNameVarInitializer(NameVar)));
   }
   compression::CompressionAlgorithm *CompressionScheme =
-      new compression::ZlibCompressionAlgorithm();
+      compression::ZlibCompression;
   return collectPGOFuncNameStrings(
       NameStrs, CompressionScheme->when(doCompression)->whenSupported(),
       Result);
@@ -507,7 +507,7 @@ Error readPGOFuncNameStrings(StringRef NameStrings, InstrProfSymtab &Symtab) {
     StringRef NameStrings;
     if (isCompressed) {
       compression::CompressionAlgorithm *CompressionScheme =
-          new compression::ZlibCompressionAlgorithm();
+          compression::ZlibCompression;
       if (!CompressionScheme->supported())
         return make_error<InstrProfError>(instrprof_error::zlib_unavailable);
 
