@@ -2083,6 +2083,14 @@ void Clang::AddMIPSTargetArgs(const ArgList &Args,
 
 void Clang::AddPPCTargetArgs(const ArgList &Args,
                              ArgStringList &CmdArgs) const {
+  if (const Arg *A = Args.getLastArg(options::OPT_mtune_EQ)) {
+    CmdArgs.push_back("-tune-cpu");
+    if (strcmp(A->getValue(), "native") == 0)
+      CmdArgs.push_back(Args.MakeArgString(llvm::sys::getHostCPUName()));
+    else
+      CmdArgs.push_back(A->getValue());
+  }
+
   // Select the ABI to use.
   const char *ABIName = nullptr;
   const llvm::Triple &T = getToolChain().getTriple();
@@ -2204,6 +2212,18 @@ void Clang::AddSparcTargetArgs(const ArgList &Args,
     assert(FloatABI == sparc::FloatABI::Hard && "Invalid float abi!");
     CmdArgs.push_back("-mfloat-abi");
     CmdArgs.push_back("hard");
+  }
+
+  if (const Arg *A = Args.getLastArg(clang::driver::options::OPT_mtune_EQ)) {
+    StringRef Name = A->getValue();
+    std::string TuneCPU;
+    if (Name == "native")
+      TuneCPU = std::string(llvm::sys::getHostCPUName());
+    else
+      TuneCPU = std::string(Name);
+
+    CmdArgs.push_back("-tune-cpu");
+    CmdArgs.push_back(Args.MakeArgString(TuneCPU));
   }
 }
 
@@ -5966,8 +5986,8 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
     }
   } else if (IsOpenMPDevice) {
     // When compiling for the OpenMP device we want protected visibility by
-    // default. This prevents the device from accidenally preempting code on the
-    // host, makes the system more robust, and improves performance.
+    // default. This prevents the device from accidentally preempting code on
+    // the host, makes the system more robust, and improves performance.
     CmdArgs.push_back("-fvisibility");
     CmdArgs.push_back("protected");
   }
@@ -6575,7 +6595,7 @@ void Clang::ConstructJob(Compilation &C, const JobAction &JA,
   // support by default, or just assume that all languages do.
   bool HaveModules =
       Std && (Std->containsValue("c++2a") || Std->containsValue("c++20") ||
-              Std->containsValue("c++latest"));
+              Std->containsValue("c++2b") || Std->containsValue("c++latest"));
   RenderModulesOptions(C, D, Args, Input, Output, CmdArgs, HaveModules);
 
   if (Args.hasFlag(options::OPT_fpch_validate_input_files_content,
@@ -8439,7 +8459,7 @@ void LinkerWrapper::ConstructJob(Compilation &C, const JobAction &JA,
   CmdArgs.push_back(
       Args.MakeArgString("--host-triple=" + TheTriple.getTriple()));
   if (Args.hasArg(options::OPT_v))
-    CmdArgs.push_back("--verbose");
+    CmdArgs.push_back("--wrapper-verbose");
 
   if (const Arg *A = Args.getLastArg(options::OPT_g_Group)) {
     if (!A->getOption().matches(options::OPT_g0))
