@@ -468,7 +468,7 @@ Error collectPGOFuncNameStrings(
   SmallVector<uint8_t, 128> CompressedNameStrings;
   CompressionScheme->compress(arrayRefFromStringRef(UncompressedNameStrings),
                               CompressedNameStrings,
-                              CompressionScheme->getBestSizeLevel());
+                              CompressionScheme->BestSizeLevel);
 
   return WriteStringToResult(CompressedNameStrings.size(),
                              toStringRef(CompressedNameStrings));

@@ -1472,7 +1472,7 @@ bool ASTReader::ReadSLocEntry(int ID) {
           *OptionalCompressionScheme;
       if (!CompressionScheme) {
         Error("compression class " +
-              (CompressionScheme->getName() + " is not available").str());
+              (CompressionScheme->Name + " is not available").str());
         return nullptr;
       }
       SmallVector<uint8_t, 0> Uncompressed;

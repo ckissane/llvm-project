@@ -252,7 +252,7 @@ llvm::Expected<StringTableIn> readStringTable(llvm::StringRef Data) {
       Uncompressed = toStringRef(UncompressedStorage);
     } else
       return error("Compressed string table, but " +
-                   (CompressionScheme->getName() + " is unavailable").str());
+                   (CompressionScheme->Name + " is unavailable").str());
   }
 
   StringTableIn Table;

@@ -90,7 +90,7 @@ std::error_code SampleProfileWriterExtBinaryBase::compressAndOutput() {
   SmallVector<uint8_t, 128> CompressedStrings;
   CompressionScheme->compress(arrayRefFromStringRef(UncompressedStrings),
                               CompressedStrings,
-                              CompressionScheme->getBestSizeLevel());
+                              CompressionScheme->BestSizeLevel);
   encodeULEB128(UncompressedStrings.size(), OS);
   encodeULEB128(CompressedStrings.size(), OS);
   OS << toStringRef(CompressedStrings);

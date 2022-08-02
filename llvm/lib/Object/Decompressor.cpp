@@ -46,7 +46,7 @@ Error Decompressor::consumeCompressedSectionHeader(bool Is64Bit,
     return createError("unsupported compression type");
   }
   if (!CompressionScheme)
-    return createError(CompressionScheme->getName() + " is not available");
+    return createError(CompressionScheme->Name + " is not available");
 
   // Skip Elf64_Chdr::ch_reserved field.
   if (Is64Bit)
