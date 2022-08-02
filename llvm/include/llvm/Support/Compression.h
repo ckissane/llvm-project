@@ -73,9 +73,8 @@ constexpr CompressionKind::operator bool() const {
   }
 }
 
-constexpr bool operator==(llvm::compression::CompressionKind other,
-                          llvm::compression::CompressionKind nother) {
-  return uint8_t(other) == uint8_t(nother);
+constexpr bool operator==(CompressionKind left, CompressionKind right) {
+  return uint8_t(left) == uint8_t(right);
 }
 
 constexpr OptionalCompressionKind operator&&(CompressionKind left, bool right) {
