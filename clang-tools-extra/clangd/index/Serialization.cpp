@@ -233,7 +233,7 @@ llvm::Expected<StringTableIn> readStringTable(llvm::StringRef Data) {
   else {
     llvm::compression::CompressionKind CompressionScheme =
         llvm::compression::CompressionKind::Zlib;
-    if (CompressionScheme->supported()) {
+    if (CompressionScheme) {
       // Don't allocate a massive buffer if UncompressedSize was corrupted
       // This is effective for sharded index, but not big monolithic ones, as
       // once compressed size reaches 4MB nothing can be ruled out.

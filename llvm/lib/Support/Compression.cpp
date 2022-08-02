@@ -47,8 +47,6 @@ constexpr int UnknownCompressionAlgorithm::BestSpeedCompression;
 constexpr int UnknownCompressionAlgorithm::DefaultCompression;
 constexpr int UnknownCompressionAlgorithm::BestSizeCompression;
 
-bool UnknownCompressionAlgorithm::Supported() { return false; };
-
 void UnknownCompressionAlgorithm::Compress(
     ArrayRef<uint8_t> Input, SmallVectorImpl<uint8_t> &CompressedBuffer,
     int Level) {
@@ -86,8 +84,6 @@ static StringRef convertZlibCodeToString(int Code) {
   }
 }
 
-bool ZlibCompressionAlgorithm::Supported() { return true; };
-
 void ZlibCompressionAlgorithm::Compress(
     ArrayRef<uint8_t> Input, SmallVectorImpl<uint8_t> &CompressedBuffer,
     int Level) {
@@ -119,7 +115,6 @@ Error ZlibCompressionAlgorithm::Decompress(ArrayRef<uint8_t> Input,
 };
 
 #else
-bool ZlibCompressionAlgorithm::Supported() { return false; };
 
 void ZlibCompressionAlgorithm::Compress(
     ArrayRef<uint8_t> Input, SmallVectorImpl<uint8_t> &CompressedBuffer,
@@ -145,8 +140,6 @@ constexpr int ZStdCompressionAlgorithm::DefaultCompression;
 constexpr int ZStdCompressionAlgorithm::BestSizeCompression;
 
 #if LLVM_ENABLE_ZSTD
-
-bool ZStdCompressionAlgorithm::Supported() { return true; };
 
 void ZStdCompressionAlgorithm::Compress(
     ArrayRef<uint8_t> Input, SmallVectorImpl<uint8_t> &CompressedBuffer,
@@ -180,7 +173,6 @@ Error ZStdCompressionAlgorithm::Decompress(ArrayRef<uint8_t> Input,
 };
 
 #else
-bool ZStdCompressionAlgorithm::Supported() { return false; };
 
 void ZStdCompressionAlgorithm::Compress(
     ArrayRef<uint8_t> Input, SmallVectorImpl<uint8_t> &CompressedBuffer,

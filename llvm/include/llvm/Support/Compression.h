@@ -121,8 +121,6 @@ public:
 
   virtual StringRef getName() = 0;
 
-  virtual bool supported() = 0;
-
   virtual int getBestSpeedLevel() = 0;
   virtual int getDefaultLevel() = 0;
   virtual int getBestSizeLevel() = 0;
@@ -151,8 +149,6 @@ public:
   }
 
   virtual StringRef getName() { return CompressionAlgorithmType::Name; }
-
-  virtual bool supported() { return CompressionAlgorithmType::Supported(); }
 
   virtual int getBestSpeedLevel() {
     return CompressionAlgorithmType::BestSpeedCompression;
@@ -204,7 +200,6 @@ public:
                        SmallVectorImpl<uint8_t> &CompressedBuffer, int Level);
   static Error Decompress(ArrayRef<uint8_t> Input, uint8_t *UncompressedBuffer,
                           size_t &UncompressedSize);
-  static bool Supported();
 
 protected:
   friend CompressionAlgorithm *CompressionKind::operator->() const;
@@ -242,7 +237,6 @@ public:
                        SmallVectorImpl<uint8_t> &CompressedBuffer, int Level);
   static Error Decompress(ArrayRef<uint8_t> Input, uint8_t *UncompressedBuffer,
                           size_t &UncompressedSize);
-  static bool Supported();
 
 protected:
   friend CompressionAlgorithm *CompressionKind::operator->() const;
