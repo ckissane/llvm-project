@@ -1462,11 +1462,15 @@ bool ASTReader::ReadSLocEntry(int ID) {
     unsigned RecCode = MaybeRecCode.get();
 
     if (RecCode == SM_SLOC_BUFFER_BLOB_COMPRESSED) {
-      uint8_t CompressionSchemeId = static_cast<uint8_t>(
-          llvm::compression::ZlibCompressionAlgorithm::AlgorithmId);
-      llvm::compression::CompressionAlgorithm *CompressionScheme =
-          llvm::compression::getCompressionAlgorithm(CompressionSchemeId);
-      if (!CompressionScheme->supported()) {
+      uint8_t CompressionSchemeId = llvm::compression::CompressionKind::Zlib;
+      llvm::compression::OptionalCompressionKind OptionalCompressionScheme =
+          llvm::compression::getOptionalCompressionKind(CompressionSchemeId);
+      if (!OptionalCompressionScheme) {
+        return llvm::MemoryBuffer::getMemBuffer(Blob, Name, true);
+      }
+      llvm::compression::CompressionKind CompressionScheme =
+          *OptionalCompressionScheme;
+      if (!CompressionScheme) {
         Error("compression class " +
               (CompressionScheme->getName() + " is not available").str());
         return nullptr;

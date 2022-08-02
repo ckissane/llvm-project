@@ -49,7 +49,8 @@ private:
 
   StringRef SectionData;
   uint64_t DecompressedSize;
-  compression::CompressionAlgorithm *CompressionScheme;
+  compression::CompressionKind CompressionScheme =
+      compression::CompressionKind::Zlib;
 };
 
 } // end namespace object

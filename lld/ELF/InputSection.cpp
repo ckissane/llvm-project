@@ -119,8 +119,8 @@ void InputSectionBase::uncompress() const {
     uncompressedBuf = bAlloc().Allocate<uint8_t>(size);
   }
 
-  if (Error e = compression::ZlibCompression->decompress(rawData,
-                                                         uncompressedBuf, size))
+  if (Error e = compression::CompressionKind::Zlib->decompress(
+          rawData, uncompressedBuf, size))
     fatal(toString(this) +
           ": uncompress failed: " + llvm::toString(std::move(e)));
   rawData = makeArrayRef(uncompressedBuf, size);
@@ -210,7 +210,7 @@ template <typename ELFT> void InputSectionBase::parseCompressedHeader() {
 
   auto *hdr = reinterpret_cast<const typename ELFT::Chdr *>(rawData.data());
   if (hdr->ch_type == ELFCOMPRESS_ZLIB) {
-    if (!compression::ZlibCompression->supported())
+    if (!compression::CompressionKind::Zlib)
       error(toString(this) + " is compressed with ELFCOMPRESS_ZLIB, but lld is "
                              "not built with zlib support");
   } else {
@@ -1221,12 +1221,12 @@ template <class ELFT> void InputSection::writeTo(uint8_t *buf) {
     auto *hdr = reinterpret_cast<const typename ELFT::Chdr *>(rawData.data());
     size_t size = uncompressedSize;
     if (hdr->ch_type == ELFCOMPRESS_ZLIB) {
-      if (!compression::ZlibCompression->supported()) {
+      if (!compression::CompressionKind::Zlib) {
         error(toString(this) +
               " is compressed with ELFCOMPRESS_ZLIB, but lld is "
               "not built with zlib support");
       } else {
-        if (Error e = compression::ZlibCompression->decompress(
+        if (Error e = compression::CompressionKind::Zlib->decompress(
                 rawData.slice(sizeof(typename ELFT::Chdr)), buf, size))
           fatal(toString(this) +
                 ": uncompress failed: " + llvm::toString(std::move(e)));

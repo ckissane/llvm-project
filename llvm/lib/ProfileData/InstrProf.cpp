@@ -437,7 +437,8 @@ uint64_t InstrProfSymtab::getFunctionHashFromAddress(uint64_t Address) {
 
 Error collectPGOFuncNameStrings(
     ArrayRef<std::string> NameStrs,
-    compression::CompressionAlgorithm *CompressionScheme, std::string &Result) {
+    compression::OptionalCompressionKind OptionalCompressionScheme,
+    std::string &Result) {
   assert(!NameStrs.empty() && "No name data to emit");
 
   uint8_t Header[16], *P = Header;
@@ -461,9 +462,9 @@ Error collectPGOFuncNameStrings(
     return Error::success();
   };
 
-  if (!CompressionScheme->notNone())
+  if ((!OptionalCompressionScheme) || (!(*OptionalCompressionScheme)))
     return WriteStringToResult(0, UncompressedNameStrings);
-
+  compression::CompressionKind CompressionScheme = *OptionalCompressionScheme;
   SmallVector<uint8_t, 128> CompressedNameStrings;
   CompressionScheme->compress(arrayRefFromStringRef(UncompressedNameStrings),
                               CompressedNameStrings,
@@ -486,10 +487,11 @@ Error collectPGOFuncNameStrings(ArrayRef<GlobalVariable *> NameVars,
   for (auto *NameVar : NameVars) {
     NameStrs.push_back(std::string(getPGOFuncNameVarInitializer(NameVar)));
   }
-  compression::CompressionAlgorithm *CompressionScheme =
-      compression::ZlibCompression;
+  compression::OptionalCompressionKind OptionalCompressionScheme =
+      compression::CompressionKind::Zlib;
   return collectPGOFuncNameStrings(
-      NameStrs, CompressionScheme->when(doCompression)->whenSupported(),
+      NameStrs,
+      (OptionalCompressionScheme && (doCompression)) || llvm::NoneType(),
       Result);
 }
 
@@ -506,9 +508,9 @@ Error readPGOFuncNameStrings(StringRef NameStrings, InstrProfSymtab &Symtab) {
     SmallVector<uint8_t, 128> UncompressedNameStrings;
     StringRef NameStrings;
     if (isCompressed) {
-      compression::CompressionAlgorithm *CompressionScheme =
-          compression::ZlibCompression;
-      if (!CompressionScheme->supported())
+      compression::CompressionKind CompressionScheme =
+          compression::CompressionKind::Zlib;
+      if (!CompressionScheme)
         return make_error<InstrProfError>(instrprof_error::zlib_unavailable);
 
       if (Error E = CompressionScheme->decompress(

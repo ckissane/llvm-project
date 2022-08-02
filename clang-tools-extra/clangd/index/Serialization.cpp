@@ -16,6 +16,7 @@
 #include "support/Logger.h"
 #include "support/Trace.h"
 #include "clang/Tooling/CompilationDatabase.h"
+#include "llvm/ADT/Optional.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Support/Compiler.h"
 #include "llvm/Support/Compression.h"
@@ -190,10 +191,12 @@ public:
       RawTable.append(std::string(S));
       RawTable.push_back(0);
     }
-    llvm::compression::CompressionAlgorithm *CompressionScheme =
-        llvm::compression::ZlibCompression;
-    CompressionScheme = CompressionScheme->whenSupported();
-    if (CompressionScheme->notNone()) {
+    llvm::compression::OptionalCompressionKind OptionalCompressionScheme =
+        llvm::compression::CompressionKind::Zlib;
+    OptionalCompressionScheme = OptionalCompressionScheme || llvm::NoneType();
+    if (OptionalCompressionScheme) {
+      llvm::compression::CompressionKind CompressionScheme =
+          *OptionalCompressionScheme;
       llvm::SmallVector<uint8_t, 0> Compressed;
       CompressionScheme->compress(llvm::arrayRefFromStringRef(RawTable),
                                   Compressed);
@@ -228,8 +231,8 @@ llvm::Expected<StringTableIn> readStringTable(llvm::StringRef Data) {
   if (UncompressedSize == 0) // No compression
     Uncompressed = R.rest();
   else {
-    llvm::compression::CompressionAlgorithm *CompressionScheme =
-        llvm::compression::ZlibCompression;
+    llvm::compression::CompressionKind CompressionScheme =
+        llvm::compression::CompressionKind::Zlib;
     if (CompressionScheme->supported()) {
       // Don't allocate a massive buffer if UncompressedSize was corrupted
       // This is effective for sharded index, but not big monolithic ones, as

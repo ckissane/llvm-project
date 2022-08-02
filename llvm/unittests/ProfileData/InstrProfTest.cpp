@@ -6,6 +6,7 @@
 //
 //===----------------------------------------------------------------------===//
 
+#include "llvm/ADT/Optional.h"
 #include "llvm/IR/Function.h"
 #include "llvm/IR/IRBuilder.h"
 #include "llvm/IR/LLVMContext.h"
@@ -1146,21 +1147,23 @@ TEST_P(MaybeSparseInstrProfTest, instr_prof_symtab_compression_test) {
   for (bool DoCompression : {false, true}) {
     // Compressing:
     std::string FuncNameStrings1;
-    EXPECT_THAT_ERROR(collectPGOFuncNameStrings(FuncNames1,
-                                                (compression::ZlibCompression)
-                                                    ->when(DoCompression)
-                                                    ->whenSupported(),
-                                                FuncNameStrings1),
-                      Succeeded());
+    EXPECT_THAT_ERROR(
+        collectPGOFuncNameStrings(
+            FuncNames1,
+            (compression::CompressionKind::Zlib && DoCompression) ||
+                llvm::NoneType(),
+            FuncNameStrings1),
+        Succeeded());
 
     // Compressing:
     std::string FuncNameStrings2;
-    EXPECT_THAT_ERROR(collectPGOFuncNameStrings(FuncNames2,
-                                                (compression::ZlibCompression)
-                                                    ->when(DoCompression)
-                                                    ->whenSupported(),
-                                                FuncNameStrings2),
-                      Succeeded());
+    EXPECT_THAT_ERROR(
+        collectPGOFuncNameStrings(
+            FuncNames2,
+            (compression::CompressionKind::Zlib && DoCompression) ||
+                llvm::NoneType(),
+            FuncNameStrings2),
+        Succeeded());
 
     for (int Padding = 0; Padding < 2; Padding++) {
       // Join with paddings :

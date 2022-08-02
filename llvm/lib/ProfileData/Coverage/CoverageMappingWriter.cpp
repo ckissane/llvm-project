@@ -11,10 +11,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "llvm/ProfileData/InstrProf.h"
 #include "llvm/ProfileData/Coverage/CoverageMappingWriter.h"
 #include "llvm/ADT/ArrayRef.h"
+#include "llvm/ADT/Optional.h"
 #include "llvm/ADT/SmallVector.h"
+#include "llvm/ProfileData/InstrProf.h"
 #include "llvm/Support/Compression.h"
 #include "llvm/Support/LEB128.h"
 #include "llvm/Support/raw_ostream.h"
@@ -47,18 +48,20 @@ void CoverageFilenamesSectionWriter::write(raw_ostream &OS, bool Compress) {
   }
 
   SmallVector<uint8_t, 128> CompressedStr;
-  compression::CompressionAlgorithm *CompressionScheme =
-      compression::ZlibCompression;
+  compression::OptionalCompressionKind OptionalCompressionScheme =
+      compression::CompressionKind::Zlib;
 
-  CompressionScheme =
-      CompressionScheme->when(Compress && DoInstrProfNameCompression)
-          ->whenSupported();
-  bool doCompression = CompressionScheme->notNone();
+  OptionalCompressionScheme =
+      (OptionalCompressionScheme && (Compress && DoInstrProfNameCompression)) ||
+      llvm::NoneType();
+  bool doCompression = bool(OptionalCompressionScheme);
 
-  if (doCompression)
+  if (doCompression) {
+    compression::CompressionKind CompressionScheme = *OptionalCompressionScheme;
     CompressionScheme->compress(arrayRefFromStringRef(FilenamesStr),
                                 CompressedStr,
                                 CompressionScheme->getBestSizeLevel());
+  }
 
   // ::= <num-filenames>
   //     <uncompressed-len>

@@ -78,9 +78,9 @@ SampleProfileWriterExtBinaryBase::markSectionStart(SecType Type,
 }
 
 std::error_code SampleProfileWriterExtBinaryBase::compressAndOutput() {
-  compression::CompressionAlgorithm *CompressionScheme =
-      compression::ZlibCompression;
-  if (!CompressionScheme->supported())
+  compression::CompressionKind CompressionScheme =
+      compression::CompressionKind::Zlib;
+  if (!CompressionScheme)
     return sampleprof_error::zlib_unavailable;
   std::string &UncompressedStrings =
       static_cast<raw_string_ostream *>(LocalBufStream.get())->str();
