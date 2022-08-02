@@ -41,11 +41,6 @@ CompressionAlgorithm *CompressionKind::operator->() const {
   }
 }
 
-bool llvm::compression::CompressionKind::operator==(
-    llvm::compression::CompressionKind other) const {
-  return x == uint8_t(other);
-}
-
 constexpr CompressionKind UnknownCompressionAlgorithm::AlgorithmId;
 constexpr StringRef UnknownCompressionAlgorithm::Name;
 constexpr int UnknownCompressionAlgorithm::BestSpeedCompression;

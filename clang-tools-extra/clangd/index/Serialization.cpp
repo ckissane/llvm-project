@@ -239,7 +239,8 @@ llvm::Expected<StringTableIn> readStringTable(llvm::StringRef Data) {
       // once compressed size reaches 4MB nothing can be ruled out.
       // Theoretical max ratio from https://zlib.net/zlib_tech.html
       constexpr int MaxCompressionRatio = 1032;
-      if (UncompressedSize / MaxCompressionRatio > R.rest().size())
+      if ((CompressionScheme == llvm::compression::CompressionKind::Zlib) &&
+          UncompressedSize / MaxCompressionRatio > R.rest().size())
         return error(
             "Bad stri table: uncompress {0} -> {1} bytes is implausible",
             R.rest().size(), UncompressedSize);
