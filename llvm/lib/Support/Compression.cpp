@@ -50,7 +50,7 @@ static StringRef convertZlibCodeToString(int Code) {
 struct ZlibCompressionAlgorithm : public CompressionAlgorithm {
 #if LLVM_ENABLE_ZLIB
 
-  void Compress(ArrayRef<uint8_t> Input,
+  void compress(ArrayRef<uint8_t> Input,
                 SmallVectorImpl<uint8_t> &CompressedBuffer, int Level) {
     unsigned long CompressedSize = ::compressBound(Input.size());
     CompressedBuffer.resize_for_overwrite(CompressedSize);
@@ -65,7 +65,7 @@ struct ZlibCompressionAlgorithm : public CompressionAlgorithm {
     if (CompressedSize < CompressedBuffer.size())
       CompressedBuffer.truncate(CompressedSize);
   };
-  Error Decompress(ArrayRef<uint8_t> Input, uint8_t *UncompressedBuffer,
+  Error decompress(ArrayRef<uint8_t> Input, uint8_t *UncompressedBuffer,
                    size_t &UncompressedSize) {
     int Res =
         ::uncompress((Bytef *)UncompressedBuffer, (uLongf *)&UncompressedSize,
@@ -80,13 +80,13 @@ struct ZlibCompressionAlgorithm : public CompressionAlgorithm {
 
 #else
 
-  void Compress(ArrayRef<uint8_t> Input,
+  void compress(ArrayRef<uint8_t> Input,
                 SmallVectorImpl<uint8_t> &CompressedBuffer, int Level) {
     llvm_unreachable("method:\"compress\" is unsupported for compression "
                      "algorithm:\"zlib\", "
                      "reason:\"llvm not compiled with zlib support\"");
   };
-  Error Decompress(ArrayRef<uint8_t> Input, uint8_t *UncompressedBuffer,
+  Error decompress(ArrayRef<uint8_t> Input, uint8_t *UncompressedBuffer,
                    size_t &UncompressedSize) {
     llvm_unreachable(
         "method:\"decompress\" is unsupported for compression "
@@ -103,7 +103,7 @@ protected:
 struct ZStdCompressionAlgorithm : public CompressionAlgorithm {
 #if LLVM_ENABLE_ZSTD
 
-  void Compress(ArrayRef<uint8_t> Input,
+  void compress(ArrayRef<uint8_t> Input,
                 SmallVectorImpl<uint8_t> &CompressedBuffer, int Level) {
     unsigned long CompressedBufferSize = ::ZSTD_compressBound(Input.size());
     CompressedBuffer.resize_for_overwrite(CompressedBufferSize);
@@ -118,7 +118,7 @@ struct ZStdCompressionAlgorithm : public CompressionAlgorithm {
     if (CompressedSize < CompressedBuffer.size())
       CompressedBuffer.truncate(CompressedSize);
   };
-  Error Decompress(ArrayRef<uint8_t> Input, uint8_t *UncompressedBuffer,
+  Error decompress(ArrayRef<uint8_t> Input, uint8_t *UncompressedBuffer,
                    size_t &UncompressedSize) {
     const size_t Res =
         ::ZSTD_decompress(UncompressedBuffer, UncompressedSize,
@@ -134,13 +134,13 @@ struct ZStdCompressionAlgorithm : public CompressionAlgorithm {
 
 #else
 
-  void Compress(ArrayRef<uint8_t> Input,
+  void compress(ArrayRef<uint8_t> Input,
                 SmallVectorImpl<uint8_t> &CompressedBuffer, int Level) {
     llvm_unreachable("method:\"compress\" is unsupported for compression "
                      "algorithm:\"zstd\", "
                      "reason:\"llvm not compiled with zstd support\"");
   };
-  Error Decompress(ArrayRef<uint8_t> Input, uint8_t *UncompressedBuffer,
+  Error decompress(ArrayRef<uint8_t> Input, uint8_t *UncompressedBuffer,
                    size_t &UncompressedSize) {
     llvm_unreachable(
         "method:\"decompress\" is unsupported for compression "
@@ -156,12 +156,12 @@ protected:
 
 struct UnknownCompressionAlgorithm : public CompressionAlgorithm {
 
-  void Compress(ArrayRef<uint8_t> Input,
+  void compress(ArrayRef<uint8_t> Input,
                 SmallVectorImpl<uint8_t> &CompressedBuffer, int Level) {
     llvm_unreachable("method:\"compress\" is unsupported for compression "
                      "algorithm:\"unknown\", reason:\"can't call on unknown\"");
   };
-  Error Decompress(ArrayRef<uint8_t> Input, uint8_t *UncompressedBuffer,
+  Error decompress(ArrayRef<uint8_t> Input, uint8_t *UncompressedBuffer,
                    size_t &UncompressedSize) {
     llvm_unreachable("method:\"decompress\" is unsupported for compression "
                      "algorithm:\"unknown\", reason:\"can't call on unknown\"");

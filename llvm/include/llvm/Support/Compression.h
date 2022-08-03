@@ -30,30 +30,21 @@ struct CompressionAlgorithm {
   const int BestSpeedLevel;
   const int DefaultLevel;
   const int BestSizeLevel;
-  virtual void Compress(ArrayRef<uint8_t> Input,
+  virtual void compress(ArrayRef<uint8_t> Input,
                         SmallVectorImpl<uint8_t> &CompressedBuffer,
                         int Level) = 0;
-  virtual Error Decompress(ArrayRef<uint8_t> Input, uint8_t *UncompressedBuffer,
+  virtual Error decompress(ArrayRef<uint8_t> Input, uint8_t *UncompressedBuffer,
                            size_t &UncompressedSize) = 0;
   void compress(ArrayRef<uint8_t> Input,
-                SmallVectorImpl<uint8_t> &CompressedBuffer, int Level) {
-
-    return Compress(Input, CompressedBuffer, Level);
-  }
-  void compress(ArrayRef<uint8_t> Input,
                 SmallVectorImpl<uint8_t> &CompressedBuffer) {
-    return Compress(Input, CompressedBuffer, this->DefaultLevel);
+    return compress(Input, CompressedBuffer, this->DefaultLevel);
   }
 
-  Error decompress(ArrayRef<uint8_t> Input, uint8_t *UncompressedBuffer,
-                   size_t &UncompressedSize) {
-    return Decompress(Input, UncompressedBuffer, UncompressedSize);
-  }
   Error decompress(ArrayRef<uint8_t> Input,
                    SmallVectorImpl<uint8_t> &UncompressedBuffer,
                    size_t UncompressedSize) {
     UncompressedBuffer.resize_for_overwrite(UncompressedSize);
-    Error E = Decompress(Input, UncompressedBuffer.data(), UncompressedSize);
+    Error E = decompress(Input, UncompressedBuffer.data(), UncompressedSize);
     if (UncompressedSize < UncompressedBuffer.size())
       UncompressedBuffer.truncate(UncompressedSize);
     return E;
