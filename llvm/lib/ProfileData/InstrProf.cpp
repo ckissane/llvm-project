@@ -205,11 +205,11 @@ const char *InstrProfSectNamePrefix[] = {
 
 namespace llvm {
 
-cl::opt<compression::CompressionAlgorithm *> InstrProfNameCompressionScheme(
+cl::opt<compression::OptionalCompressionKind> InstrProfNameCompressionScheme(
     "name-compression",
     cl::desc("Scheme for name/filename string compression (none/zlib/ztsd), "
              "defaults to zstd"),
-    cl::init(compression::ZStdCompression));
+    cl::init(compression::CompressionKind::ZStd));
 
 std::string getInstrProfSectionName(InstrProfSectKind IPSK,
                                     Triple::ObjectFormatType OF,
@@ -439,7 +439,8 @@ uint64_t InstrProfSymtab::getFunctionHashFromAddress(uint64_t Address) {
 
 Error collectPGOFuncNameStrings(
     ArrayRef<std::string> NameStrs,
-    compression::CompressionAlgorithm *CompressionScheme, std::string &Result) {
+    compression::OptionalCompressionKind OptionalCompressionScheme,
+    std::string &Result) {
   assert(!NameStrs.empty() && "No name data to emit");
 
   uint8_t Header[16], *P = Header;
@@ -453,42 +454,39 @@ Error collectPGOFuncNameStrings(
   unsigned EncLen = encodeULEB128(UncompressedNameStrings.length(), P);
   P += EncLen;
 
-  auto WriteStringToResult =
-      [&](size_t CompressedLen,
-          compression::SupportCompressionType CompressionSchemeId,
-          StringRef InputStr) {
-        if (CompressedLen == 0) {
-          EncLen = encodeULEB128(CompressedLen, P);
-          P += EncLen;
-          char *HeaderStr = reinterpret_cast<char *>(&Header[0]);
-          unsigned HeaderLen = P - &Header[0];
-          Result.append(HeaderStr, HeaderLen);
-          Result += InputStr;
-          return Error::success();
-        } else {
-          EncLen = encodeULEB128(CompressedLen, P);
-          P += EncLen;
-          EncLen = encodeULEB128(static_cast<uint8_t>(CompressionSchemeId), P);
-          P += EncLen;
-          char *HeaderStr = reinterpret_cast<char *>(&Header[0]);
-          unsigned HeaderLen = P - &Header[0];
-          Result.append(HeaderStr, HeaderLen);
-          Result += InputStr;
-          return Error::success();
-        }
-      };
+  auto WriteStringToResult = [&](size_t CompressedLen,
+                                 uint8_t CompressionSchemeId,
+                                 StringRef InputStr) {
+    if (CompressedLen == 0) {
+      EncLen = encodeULEB128(CompressedLen, P);
+      P += EncLen;
+      char *HeaderStr = reinterpret_cast<char *>(&Header[0]);
+      unsigned HeaderLen = P - &Header[0];
+      Result.append(HeaderStr, HeaderLen);
+      Result += InputStr;
+      return Error::success();
+    } else {
+      EncLen = encodeULEB128(CompressedLen, P);
+      P += EncLen;
+      EncLen = encodeULEB128(CompressionSchemeId, P);
+      P += EncLen;
+      char *HeaderStr = reinterpret_cast<char *>(&Header[0]);
+      unsigned HeaderLen = P - &Header[0];
+      Result.append(HeaderStr, HeaderLen);
+      Result += InputStr;
+      return Error::success();
+    }
+  };
 
-  if (!CompressionScheme->notNone())
-    return WriteStringToResult(0, compression::SupportCompressionType::None,
-                               UncompressedNameStrings);
-
+  if ((!OptionalCompressionScheme) || (!(*OptionalCompressionScheme)))
+    return WriteStringToResult(0, 0, UncompressedNameStrings);
+  compression::CompressionKind CompressionScheme = *OptionalCompressionScheme;
   SmallVector<uint8_t, 128> CompressedNameStrings;
   CompressionScheme->compress(arrayRefFromStringRef(UncompressedNameStrings),
                               CompressedNameStrings,
-                              CompressionScheme->getBestSizeLevel());
+                              CompressionScheme->BestSizeLevel);
 
-  return WriteStringToResult(CompressedNameStrings.size(),
-                             CompressionScheme->getAlgorithmId(),
+  return WriteStringToResult(CompressedNameStrings.size(), CompressionScheme,
                              toStringRef(CompressedNameStrings));
 }
 
@@ -501,13 +499,15 @@ StringRef getPGOFuncNameVarInitializer(GlobalVariable *NameVar) {
 
 Error collectPGOFuncNameStrings(
     ArrayRef<GlobalVariable *> NameVars, std::string &Result,
-    compression::CompressionAlgorithm *CompressionScheme) {
+    compression::OptionalCompressionKind OptionalCompressionScheme) {
   std::vector<std::string> NameStrs;
   for (auto *NameVar : NameVars) {
     NameStrs.push_back(std::string(getPGOFuncNameVarInitializer(NameVar)));
   }
-  return collectPGOFuncNameStrings(NameStrs, CompressionScheme->whenSupported(),
-                                   Result);
+
+  return collectPGOFuncNameStrings(
+      NameStrs, compression::noneIfUnsupported(OptionalCompressionScheme),
+      Result);
 }
 
 Error readPGOFuncNameStrings(StringRef NameStrings, InstrProfSymtab &Symtab) {
@@ -520,18 +520,20 @@ Error readPGOFuncNameStrings(StringRef NameStrings, InstrProfSymtab &Symtab) {
     uint64_t CompressedSize = decodeULEB128(P, &N);
     P += N;
     bool isCompressed = (CompressedSize != 0);
-    compression::CompressionAlgorithm *CompressionScheme =
-        compression::NoneCompression;
+    compression::OptionalCompressionKind OptionalCompressionScheme =
+        llvm::NoneType();
     if (isCompressed) {
       uint64_t CompressionSchemeId = decodeULEB128(P, &N);
       P += N;
-      CompressionScheme =
-          compression::getCompressionAlgorithm(CompressionSchemeId);
+      OptionalCompressionScheme =
+          compression::getOptionalCompressionKind(CompressionSchemeId);
     }
     SmallVector<uint8_t, 128> UncompressedNameStrings;
     StringRef NameStrings;
-    if (isCompressed) {
-      if (!CompressionScheme->supported())
+    if (isCompressed && bool(OptionalCompressionScheme)) {
+      compression::CompressionKind CompressionScheme =
+          *OptionalCompressionScheme;
+      if (!CompressionScheme)
         return make_error<InstrProfError>(instrprof_error::zlib_unavailable);
 
       if (Error E = CompressionScheme->decompress(
@@ -542,6 +544,7 @@ Error readPGOFuncNameStrings(StringRef NameStrings, InstrProfSymtab &Symtab) {
       }
       P += CompressedSize;
       NameStrings = toStringRef(UncompressedNameStrings);
+
     } else {
       NameStrings =
           StringRef(reinterpret_cast<const char *>(P), UncompressedSize);

@@ -41,14 +41,14 @@ Error Decompressor::consumeCompressedSectionHeader(bool Is64Bit,
   uint64_t ELFCompressionSchemeId = Extractor.getUnsigned(
       &Offset, Is64Bit ? sizeof(Elf64_Word) : sizeof(Elf32_Word));
   if (ELFCompressionSchemeId == ELFCOMPRESS_ZLIB) {
-    CompressionScheme = compression::ZlibCompression;
+    CompressionScheme = compression::CompressionKind::Zlib;
   } else if (ELFCompressionSchemeId == ELFCOMPRESS_ZSTD) {
-    CompressionScheme = compression::ZStdCompression;
+    CompressionScheme = compression::CompressionKind::ZStd;
   } else {
     return createError("unsupported compression type");
   }
-  if (!CompressionScheme->supported())
-    return createError(CompressionScheme->getName() + " is not available");
+  if (!CompressionScheme)
+    return createError(CompressionScheme->Name + " is not available");
 
   // Skip Elf64_Chdr::ch_reserved field.
   if (Is64Bit)

@@ -1188,8 +1188,7 @@ ASTFileSignature ASTWriter::writeUnhashedControlBlock(Preprocessor &PP,
 
 /// Write the control block.
 void ASTWriter::WriteControlBlock(Preprocessor &PP, ASTContext &Context,
-                                  StringRef isysroot,
-                                  const std::string &OutputFile) {
+                                  StringRef isysroot, StringRef OutputFile) {
   using namespace llvm;
 
   Stream.EnterSubblock(CONTROL_BLOCK_ID, 5);
@@ -2006,23 +2005,24 @@ emitBlob(llvm::BitstreamWriter &Stream, StringRef Blob,
          unsigned SLocBufferBlobCompressedAbbrv,
          unsigned SLocBufferBlobCompressedDynamicAbbrv,
          unsigned SLocBufferBlobAbbrv,
-         llvm::compression::CompressionAlgorithm *CompressionScheme) {
+         llvm::compression::OptionalCompressionKind OptionalCompressionScheme) {
   using RecordDataType = ASTWriter::RecordData::value_type;
 
   // Compress the buffer if possible. We expect that almost all PCM
   // consumers will not want its contents.
 
-  CompressionScheme = CompressionScheme->whenSupported();
-  if (CompressionScheme->notNone()) {
-
+  OptionalCompressionScheme =
+      compression::noneIfUnsupported(OptionalCompressionScheme);
+  if (OptionalCompressionScheme) {
+    llvm::compression::CompressionKind CompressionScheme =
+        *OptionalCompressionScheme;
     SmallVector<uint8_t, 0> CompressedBuffer;
 
     CompressionScheme->compress(llvm::arrayRefFromStringRef(Blob.drop_back(1)),
                                 CompressedBuffer);
     // if our chosen CompressionAlgorithm happens to be zlib output old format
     // for extra back compat
-    if (CompressionScheme->getAlgorithmId() ==
-        llvm::compression::SupportCompressionType::Zlib) {
+    if (CompressionScheme == llvm::compression::CompressionKind::Zlib) {
 
       RecordDataType Record[] = {SM_SLOC_BUFFER_BLOB_COMPRESSED,
                                  Blob.size() - 1};
@@ -2030,9 +2030,8 @@ emitBlob(llvm::BitstreamWriter &Stream, StringRef Blob,
                                 llvm::toStringRef(CompressedBuffer));
       return;
     }
-    RecordDataType Record[] = {
-        SM_SLOC_BUFFER_BLOB_COMPRESSED_DYNAMIC, Blob.size() - 1,
-        static_cast<uint8_t>(CompressionScheme->getAlgorithmId())};
+    RecordDataType Record[] = {SM_SLOC_BUFFER_BLOB_COMPRESSED_DYNAMIC,
+                               Blob.size() - 1, uint8_t(CompressionScheme)};
     Stream.EmitRecordWithBlob(SLocBufferBlobCompressedDynamicAbbrv, Record,
                               llvm::toStringRef(CompressedBuffer));
     return;
@@ -4489,12 +4488,12 @@ void ASTWriter::SetSelectorOffset(Selector Sel, uint32_t Offset) {
   SelectorOffsets[ID - FirstSelectorID] = Offset;
 }
 
-ASTWriter::ASTWriter(llvm::BitstreamWriter &Stream,
-                     SmallVectorImpl<char> &Buffer,
-                     InMemoryModuleCache &ModuleCache,
-                     ArrayRef<std::shared_ptr<ModuleFileExtension>> Extensions,
-                     llvm::compression::CompressionAlgorithm *CompressionScheme,
-                     bool IncludeTimestamps)
+ASTWriter::ASTWriter(
+    llvm::BitstreamWriter &Stream, SmallVectorImpl<char> &Buffer,
+    InMemoryModuleCache &ModuleCache,
+    ArrayRef<std::shared_ptr<ModuleFileExtension>> Extensions,
+    llvm::compression::OptionalCompressionKind OptionalCompressionScheme,
+    bool IncludeTimestamps)
     : Stream(Stream), Buffer(Buffer), ModuleCache(ModuleCache),
       CompressionScheme(CompressionScheme),
       IncludeTimestamps(IncludeTimestamps) {
@@ -4515,11 +4514,11 @@ time_t ASTWriter::getTimestampForOutput(const FileEntry *E) const {
   return IncludeTimestamps ? E->getModificationTime() : 0;
 }
 
-ASTFileSignature ASTWriter::WriteAST(Sema &SemaRef,
-                                     const std::string &OutputFile,
+ASTFileSignature ASTWriter::WriteAST(Sema &SemaRef, StringRef OutputFile,
                                      Module *WritingModule, StringRef isysroot,
                                      bool hasErrors,
-                                     bool ShouldCacheASTInMemory) {
+                                     bool ShouldCacheASTInMemory,
+                                     bool OutputPathIndependent) {
   WritingAST = true;
 
   ASTHasCompilerErrors = hasErrors;
@@ -4535,8 +4534,9 @@ ASTFileSignature ASTWriter::WriteAST(Sema &SemaRef,
   Context = &SemaRef.Context;
   PP = &SemaRef.PP;
   this->WritingModule = WritingModule;
-  ASTFileSignature Signature =
-      WriteASTCore(SemaRef, isysroot, OutputFile, WritingModule);
+  ASTFileSignature Signature = WriteASTCore(
+      SemaRef, isysroot, OutputPathIndependent ? StringRef() : OutputFile,
+      WritingModule);
   Context = nullptr;
   PP = nullptr;
   this->WritingModule = nullptr;
@@ -4562,7 +4562,7 @@ static void AddLazyVectorDecls(ASTWriter &Writer, Vector &Vec,
 }
 
 ASTFileSignature ASTWriter::WriteASTCore(Sema &SemaRef, StringRef isysroot,
-                                         const std::string &OutputFile,
+                                         StringRef OutputFile,
                                          Module *WritingModule) {
   using namespace llvm;
 

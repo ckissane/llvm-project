@@ -878,13 +878,13 @@ void ELFWriter::writeSectionData(const MCAssembler &Asm, MCSection &Sec,
   SmallVector<uint8_t, 128> Compressed;
   switch (CompressionType) {
   case DebugCompressionType::Z:
-    compression::ZlibCompression->compress(
+    compression::CompressionKind::Zlib->compress(
         makeArrayRef(reinterpret_cast<uint8_t *>(UncompressedData.data()),
                      UncompressedData.size()),
         Compressed);
     break;
   case DebugCompressionType::ZStd:
-    compression::ZStdCompression->compress(
+    compression::CompressionKind::ZStd->compress(
         makeArrayRef(reinterpret_cast<uint8_t *>(UncompressedData.data()),
                      UncompressedData.size()),
         Compressed);

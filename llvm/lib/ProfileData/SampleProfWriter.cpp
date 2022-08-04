@@ -78,23 +78,39 @@ SampleProfileWriterExtBinaryBase::markSectionStart(SecType Type,
 }
 
 std::error_code SampleProfileWriterExtBinaryBase::compressAndOutput() {
-  if (!CompressionScheme->supported())
-    return sampleprof_error::zlib_unavailable;
-  std::string &UncompressedStrings =
-      static_cast<raw_string_ostream *>(LocalBufStream.get())->str();
-  if (UncompressedStrings.size() == 0)
+  if (!OptionalCompressionScheme) {
+    std::string &UncompressedStrings =
+        static_cast<raw_string_ostream *>(LocalBufStream.get())->str();
+    if (UncompressedStrings.size() == 0)
+      return sampleprof_error::success;
+    auto &OS = *OutputStream;
+    encodeULEB128(UncompressedStrings.size(), OS);
+    encodeULEB128(UncompressedStrings.size(), OS);
+    encodeULEB128(uint8_t(0), OS);
+    OS << UncompressedStrings;
+    UncompressedStrings.clear();
     return sampleprof_error::success;
-  auto &OS = *OutputStream;
-  SmallVector<uint8_t, 128> CompressedStrings;
-  CompressionScheme->compress(arrayRefFromStringRef(UncompressedStrings),
-                              CompressedStrings,
-                              CompressionScheme->getBestSizeLevel());
-  encodeULEB128(UncompressedStrings.size(), OS);
-  encodeULEB128(CompressedStrings.size(), OS);
-  encodeULEB128(static_cast<uint8_t>(CompressionScheme->getAlgorithmId()), OS);
-  OS << toStringRef(CompressedStrings);
-  UncompressedStrings.clear();
-  return sampleprof_error::success;
+  } else {
+    compression::CompressionKind CompressionScheme = *OptionalCompressionScheme;
+
+    if (!CompressionScheme)
+      return sampleprof_error::zlib_unavailable;
+    std::string &UncompressedStrings =
+        static_cast<raw_string_ostream *>(LocalBufStream.get())->str();
+    if (UncompressedStrings.size() == 0)
+      return sampleprof_error::success;
+    auto &OS = *OutputStream;
+    SmallVector<uint8_t, 128> CompressedStrings;
+    CompressionScheme->compress(arrayRefFromStringRef(UncompressedStrings),
+                                CompressedStrings,
+                                CompressionScheme->BestSizeLevel);
+    encodeULEB128(UncompressedStrings.size(), OS);
+    encodeULEB128(CompressedStrings.size(), OS);
+    encodeULEB128(uint8_t(CompressionScheme), OS);
+    OS << toStringRef(CompressedStrings);
+    UncompressedStrings.clear();
+    return sampleprof_error::success;
+  }
 }
 
 /// Add a new section into section header table given the section type
@@ -843,7 +859,7 @@ SampleProfileWriterCompactBinary::writeSample(const FunctionSamples &S) {
 /// \returns an error code indicating the status of the created writer.
 ErrorOr<std::unique_ptr<SampleProfileWriter>> SampleProfileWriter::create(
     StringRef Filename, SampleProfileFormat Format,
-    compression::CompressionAlgorithm *CompressionScheme) {
+    compression::OptionalCompressionKind OptionalCompressionScheme) {
   std::error_code EC;
   std::unique_ptr<raw_ostream> OS;
   if (Format == SPF_Binary || Format == SPF_Ext_Binary ||
@@ -854,7 +870,7 @@ ErrorOr<std::unique_ptr<SampleProfileWriter>> SampleProfileWriter::create(
   if (EC)
     return EC;
 
-  return create(OS, Format, CompressionScheme);
+  return create(OS, Format, OptionalCompressionScheme);
 }
 
 /// Create a sample profile stream writer based on the specified format.
@@ -866,7 +882,7 @@ ErrorOr<std::unique_ptr<SampleProfileWriter>> SampleProfileWriter::create(
 /// \returns an error code indicating the status of the created writer.
 ErrorOr<std::unique_ptr<SampleProfileWriter>> SampleProfileWriter::create(
     std::unique_ptr<raw_ostream> &OS, SampleProfileFormat Format,
-    compression::CompressionAlgorithm *CompressionScheme) {
+    compression::OptionalCompressionKind OptionalCompressionScheme) {
   std::error_code EC;
   std::unique_ptr<SampleProfileWriter> Writer;
 
@@ -876,13 +892,16 @@ ErrorOr<std::unique_ptr<SampleProfileWriter>> SampleProfileWriter::create(
     return sampleprof_error::unsupported_writing_format;
 
   if (Format == SPF_Binary)
-    Writer.reset(new SampleProfileWriterRawBinary(OS, CompressionScheme));
+    Writer.reset(
+        new SampleProfileWriterRawBinary(OS, OptionalCompressionScheme));
   else if (Format == SPF_Ext_Binary)
-    Writer.reset(new SampleProfileWriterExtBinary(OS, CompressionScheme));
+    Writer.reset(
+        new SampleProfileWriterExtBinary(OS, OptionalCompressionScheme));
   else if (Format == SPF_Compact_Binary)
-    Writer.reset(new SampleProfileWriterCompactBinary(OS, CompressionScheme));
+    Writer.reset(
+        new SampleProfileWriterCompactBinary(OS, OptionalCompressionScheme));
   else if (Format == SPF_Text)
-    Writer.reset(new SampleProfileWriterText(OS, CompressionScheme));
+    Writer.reset(new SampleProfileWriterText(OS, OptionalCompressionScheme));
   else if (Format == SPF_GCC)
     EC = sampleprof_error::unsupported_writing_format;
   else

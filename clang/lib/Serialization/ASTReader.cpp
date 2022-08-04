@@ -1465,14 +1465,18 @@ bool ASTReader::ReadSLocEntry(int ID) {
         RecCode == SM_SLOC_BUFFER_BLOB_COMPRESSED_DYNAMIC) {
       uint8_t CompressionSchemeId =
           RecCode == SM_SLOC_BUFFER_BLOB_COMPRESSED
-              ? static_cast<uint8_t>(
-                    llvm::compression::SupportCompressionType::Zlib)
+              ? uint8_t(llvm::compression::CompressionKind::Zlib)
               : Record[1];
-      llvm::compression::CompressionAlgorithm *CompressionScheme =
-          llvm::compression::getCompressionAlgorithm(CompressionSchemeId);
-      if (!CompressionScheme->supported()) {
+      llvm::compression::OptionalCompressionKind OptionalCompressionScheme =
+          llvm::compression::getOptionalCompressionKind(CompressionSchemeId);
+      if (!OptionalCompressionScheme) {
+        return llvm::MemoryBuffer::getMemBuffer(Blob, Name, true);
+      }
+      llvm::compression::CompressionKind CompressionScheme =
+          *OptionalCompressionScheme;
+      if (!CompressionScheme) {
         Error("compression class " +
-              (CompressionScheme->getName() + " is not available").str());
+              (CompressionScheme->Name + " is not available").str());
         return nullptr;
       }
       SmallVector<uint8_t, 0> Uncompressed;

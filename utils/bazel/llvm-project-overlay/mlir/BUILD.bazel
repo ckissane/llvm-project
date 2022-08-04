@@ -311,7 +311,6 @@ cc_library(
         "include/mlir/Interfaces/CastInterfaces.h",
         "include/mlir/Interfaces/SideEffectInterfaces.h",
         "include/mlir/Interfaces/DataLayoutInterfaces.h",
-        "include/mlir/Interfaces/DecodeAttributesInterfaces.h",
         "include/mlir/Interfaces/FoldInterfaces.h",
     ],
     includes = ["include"],
@@ -1191,6 +1190,7 @@ td_library(
     ],
     includes = ["include"],
     deps = [
+        ":BuiltinDialectTdFiles",
         ":CastInterfacesTdFiles",
         ":OpBaseTdFiles",
         ":SideEffectInterfacesTdFiles",
@@ -2187,6 +2187,7 @@ cc_library(
 cc_library(
     name = "NVGPUTransforms",
     srcs = [
+        "lib/Dialect/NVGPU/Transforms/MmaSyncTF32Transform.cpp",
         "lib/Dialect/NVGPU/Transforms/OptimizeSharedMemory.cpp",
         "lib/Dialect/NVGPU/Transforms/PassDetail.h",
     ],
@@ -4388,6 +4389,7 @@ td_library(
     srcs = glob(["include/mlir/Dialect/SPIRV/IR/*.td"]),
     includes = ["include"],
     deps = [
+        ":BuiltinDialectTdFiles",
         ":CallInterfacesTdFiles",
         ":ControlFlowInterfacesTdFiles",
         ":FunctionInterfacesTdFiles",
@@ -6264,7 +6266,6 @@ cc_library(
         ":PDLInterpDialect",
         ":PDLToPDLInterp",
         ":QuantOps",
-        ":QuantPassIncGen",
         ":ROCDLDialect",
         ":ReconcileUnrealizedCasts",
         ":SCFDialect",
@@ -6344,6 +6345,7 @@ cc_binary(
         "//mlir/test:TestLinalg",
         "//mlir/test:TestMath",
         "//mlir/test:TestMemRef",
+        "//mlir/test:TestNVGPU",
         "//mlir/test:TestPDLL",
         "//mlir/test:TestPass",
         "//mlir/test:TestReducer",
@@ -7003,23 +7005,6 @@ gentbl_cc_library(
     deps = [":QuantizationOpsTdFiles"],
 )
 
-gentbl_cc_library(
-    name = "QuantPassIncGen",
-    strip_include_prefix = "include",
-    tbl_outs = [
-        (
-            [
-                "-gen-pass-decls",
-                "-name=Quant",
-            ],
-            "include/mlir/Dialect/Quant/Passes.h.inc",
-        ),
-    ],
-    tblgen = ":mlir-tblgen",
-    td_file = "include/mlir/Dialect/Quant/Passes.td",
-    deps = [":PassBaseTdFiles"],
-)
-
 cc_library(
     name = "QuantOps",
     srcs = [
@@ -7027,19 +7012,13 @@ cc_library(
         "lib/Dialect/Quant/IR/QuantTypes.cpp",
         "lib/Dialect/Quant/IR/TypeDetail.h",
         "lib/Dialect/Quant/IR/TypeParser.cpp",
-        "lib/Dialect/Quant/Transforms/ConvertConst.cpp",
-        "lib/Dialect/Quant/Transforms/ConvertSimQuant.cpp",
-        "lib/Dialect/Quant/Transforms/PassDetail.h",
         "lib/Dialect/Quant/Utils/FakeQuantSupport.cpp",
-        "lib/Dialect/Quant/Utils/QuantizeUtils.cpp",
         "lib/Dialect/Quant/Utils/UniformSupport.cpp",
     ],
     hdrs = [
         "include/mlir/Dialect/Quant/FakeQuantSupport.h",
-        "include/mlir/Dialect/Quant/Passes.h",
         "include/mlir/Dialect/Quant/QuantOps.h",
         "include/mlir/Dialect/Quant/QuantTypes.h",
-        "include/mlir/Dialect/Quant/QuantizeUtils.h",
         "include/mlir/Dialect/Quant/UniformSupport.h",
     ],
     includes = ["include"],
@@ -7050,7 +7029,6 @@ cc_library(
         ":InferTypeOpInterface",
         ":Pass",
         ":QuantOpsIncGen",
-        ":QuantPassIncGen",
         ":SideEffectInterfaces",
         ":TransformUtils",
         "//llvm:Support",
@@ -8111,6 +8089,7 @@ td_library(
     ],
     includes = ["include"],
     deps = [
+        ":BuiltinDialectTdFiles",
         ":InferTypeOpInterfaceTdFiles",
         ":OpBaseTdFiles",
         ":SideEffectInterfacesTdFiles",
@@ -8286,6 +8265,7 @@ td_library(
     ],
     includes = ["include"],
     deps = [
+        ":BuiltinDialectTdFiles",
         ":CastInterfacesTdFiles",
         ":InferIntRangeInterfaceTdFiles",
         ":InferTypeOpInterfaceTdFiles",
@@ -8735,6 +8715,7 @@ td_library(
     ],
     includes = ["include"],
     deps = [
+        ":BuiltinDialectTdFiles",
         ":CallInterfacesTdFiles",
         ":ControlFlowInterfacesTdFiles",
         ":FunctionInterfacesTdFiles",

@@ -217,13 +217,14 @@ StringRef getFuncNameWithoutPrefix(StringRef PGOFuncName,
 /// second field will have value zero.
 Error collectPGOFuncNameStrings(
     ArrayRef<std::string> NameStrs,
-    compression::CompressionAlgorithm *CompressionScheme, std::string &Result);
+    compression::OptionalCompressionKind OptionalCompressionScheme,
+    std::string &Result);
 
 /// Produce \c Result string with the same format described above. The input
 /// is vector of PGO function name variables that are referenced.
 Error collectPGOFuncNameStrings(
     ArrayRef<GlobalVariable *> NameVars, std::string &Result,
-    compression::CompressionAlgorithm *CompressionScheme);
+    compression::OptionalCompressionKind OptionalCompressionScheme);
 
 /// \c NameStrings is a string composed of one of more sub-strings encoded in
 /// the format described above. The substrings are separated by 0 or more zero
@@ -1203,7 +1204,7 @@ void createProfileFileNameVar(Module &M, StringRef InstrProfileOutput);
 
 // Whether to compress function names in profile records, and filenames in
 // code coverage mappings. Used by the Instrumentation library and unit tests.
-extern cl::opt<compression::CompressionAlgorithm *>
+extern cl::opt<compression::OptionalCompressionKind>
     InstrProfNameCompressionScheme;
 
 } // end namespace llvm

@@ -306,7 +306,7 @@ public:
   /// Computing a type for the function argument may require running
   /// overloading, so we postpone its computation until it is actually needed.
   ///
-  /// Clients should be very careful when using this funciton, as it stores a
+  /// Clients should be very careful when using this function, as it stores a
   /// function_ref, clients should make sure all calls to get() with the same
   /// location happen while function_ref is alive.
   ///
@@ -4018,13 +4018,10 @@ public:
                                               DeclAccessPair *Found = nullptr);
 
   bool ResolveAndFixSingleFunctionTemplateSpecialization(
-                      ExprResult &SrcExpr,
-                      bool DoFunctionPointerConverion = false,
-                      bool Complain = false,
-                      SourceRange OpRangeForComplaining = SourceRange(),
-                      QualType DestTypeForComplaining = QualType(),
-                      unsigned DiagIDForComplaining = 0);
-
+      ExprResult &SrcExpr, bool DoFunctionPointerConversion = false,
+      bool Complain = false, SourceRange OpRangeForComplaining = SourceRange(),
+      QualType DestTypeForComplaining = QualType(),
+      unsigned DiagIDForComplaining = 0);
 
   Expr *FixOverloadedFunctionReference(Expr *E,
                                        DeclAccessPair FoundDecl,
@@ -4479,6 +4476,8 @@ public:
   bool CheckRedeclarationModuleOwnership(NamedDecl *New, NamedDecl *Old);
   bool CheckRedeclarationExported(NamedDecl *New, NamedDecl *Old);
   bool CheckRedeclarationInModule(NamedDecl *New, NamedDecl *Old);
+  bool IsRedefinitionInModule(const NamedDecl *New,
+                                 const NamedDecl *Old) const;
 
   void DiagnoseAmbiguousLookup(LookupResult &Result);
   //@}
@@ -6818,9 +6817,6 @@ public:
   /// output parameter (containing the full nested-name-specifier,
   /// including this new type).
   ///
-  /// \param ErrorRecoveryLookup If true, then this method is called to improve
-  /// error recovery. In this case do not emit error message.
-  ///
   /// \param IsCorrectedToColon If not null, suggestions to replace '::' -> ':'
   /// are allowed.  The bool value pointed by this parameter is set to 'true'
   /// if the identifier is treated as if it was followed by ':', not '::'.
@@ -7140,8 +7136,8 @@ public:
   /// check (either a concept or a constrained entity).
   /// \param ConstraintExprs a list of constraint expressions, treated as if
   /// they were 'AND'ed together.
-  /// \param TemplateArgs the list of template arguments to substitute into the
-  /// constraint expression.
+  /// \param TemplateArgLists the list of template arguments to substitute into
+  /// the constraint expression.
   /// \param TemplateIDRange The source range of the template id that
   /// caused the constraints check.
   /// \param Satisfaction if true is returned, will contain details of the
@@ -7151,7 +7147,7 @@ public:
   /// false otherwise.
   bool CheckConstraintSatisfaction(
       const NamedDecl *Template, ArrayRef<const Expr *> ConstraintExprs,
-      ArrayRef<TemplateArgument> TemplateArgs,
+      const MultiLevelTemplateArgumentList &TemplateArgLists,
       SourceRange TemplateIDRange, ConstraintSatisfaction &Satisfaction);
 
   /// \brief Check whether the given non-dependent constraint expression is
@@ -7187,9 +7183,10 @@ public:
   ///
   /// \returns true if the constrains are not satisfied or could not be checked
   /// for satisfaction, false if the constraints are satisfied.
-  bool EnsureTemplateArgumentListConstraints(TemplateDecl *Template,
-                                       ArrayRef<TemplateArgument> TemplateArgs,
-                                             SourceRange TemplateIDRange);
+  bool EnsureTemplateArgumentListConstraints(
+      TemplateDecl *Template,
+      const MultiLevelTemplateArgumentList &TemplateArgs,
+      SourceRange TemplateIDRange);
 
   /// \brief Emit diagnostics explaining why a constraint expression was deemed
   /// unsatisfied.

@@ -69,7 +69,7 @@ template class basic_parser<unsigned long long>;
 template class basic_parser<double>;
 template class basic_parser<float>;
 template class basic_parser<std::string>;
-template class basic_parser<compression::CompressionAlgorithm *>;
+template class basic_parser<compression::OptionalCompressionKind>;
 template class basic_parser<char>;
 
 template class opt<unsigned>;
@@ -77,7 +77,7 @@ template class opt<int>;
 template class opt<std::string>;
 template class opt<char>;
 template class opt<bool>;
-template class opt<compression::CompressionAlgorithm *>;
+template class opt<compression::OptionalCompressionKind>;
 } // namespace cl
 } // namespace llvm
 
@@ -99,7 +99,7 @@ void parser<double>::anchor() {}
 void parser<float>::anchor() {}
 void parser<std::string>::anchor() {}
 void parser<char>::anchor() {}
-void parser<compression::CompressionAlgorithm *>::anchor() {}
+void parser<compression::OptionalCompressionKind>::anchor() {}
 
 //===----------------------------------------------------------------------===//
 
@@ -1923,18 +1923,17 @@ bool parser<boolOrDefault>::parse(Option &O, StringRef ArgName, StringRef Arg,
                  "' is invalid value for boolean argument! Try 0 or 1");
 }
 
-// parser<compression::CompressionAlgorithm *> implementation
+// parser<compression::OptionalCompressionKind> implementation
 //
-bool parser<compression::CompressionAlgorithm *>::parse(
+bool parser<compression::OptionalCompressionKind>::parse(
     Option &O, StringRef, StringRef Arg,
-    compression::CompressionAlgorithm *&Value) {
-  Value = llvm::StringSwitch<compression::CompressionAlgorithm *>(Arg.str())
-              .Case("none", compression::NoneCompression)
-              .Case("zlib", compression::ZlibCompression)
-              .Case("zstd", compression::ZStdCompression)
-              .Default(compression::UnknownCompression);
-  if (Value->getAlgorithmId() ==
-      compression::UnknownCompressionAlgorithm::AlgorithmId) {
+    compression::OptionalCompressionKind &Value) {
+  Value = llvm::StringSwitch<compression::OptionalCompressionKind>(Arg.str())
+              .Case("none", NoneType())
+              .Case("zlib", compression::CompressionKind::Zlib)
+              .Case("zstd", compression::CompressionKind::ZStd)
+              .Default(compression::CompressionKind::Unknown);
+  if (bool(Value) && ((*Value) == compression::CompressionKind::Unknown)) {
 
     StringRef ArgName = O.ArgStr;
     errs() << GlobalParser->ProgramName << ": ";
@@ -2196,7 +2195,7 @@ PRINT_OPT_DIFF(unsigned long)
 PRINT_OPT_DIFF(unsigned long long)
 PRINT_OPT_DIFF(double)
 PRINT_OPT_DIFF(float)
-PRINT_OPT_DIFF(compression::CompressionAlgorithm *)
+PRINT_OPT_DIFF(compression::OptionalCompressionKind)
 PRINT_OPT_DIFF(char)
 
 void parser<std::string>::printOptionDiff(const Option &O, StringRef V,

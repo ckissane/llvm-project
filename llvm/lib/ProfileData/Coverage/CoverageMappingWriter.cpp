@@ -11,10 +11,11 @@
 //
 //===----------------------------------------------------------------------===//
 
-#include "llvm/ProfileData/InstrProf.h"
 #include "llvm/ProfileData/Coverage/CoverageMappingWriter.h"
 #include "llvm/ADT/ArrayRef.h"
+#include "llvm/ADT/Optional.h"
 #include "llvm/ADT/SmallVector.h"
+#include "llvm/ProfileData/InstrProf.h"
 #include "llvm/Support/Compression.h"
 #include "llvm/Support/LEB128.h"
 #include "llvm/Support/raw_ostream.h"
@@ -37,7 +38,8 @@ CoverageFilenamesSectionWriter::CoverageFilenamesSectionWriter(
 }
 
 void CoverageFilenamesSectionWriter::write(
-    raw_ostream &OS, compression::CompressionAlgorithm *CompressionScheme) {
+    raw_ostream &OS,
+    compression::OptionalCompressionKind OptionalCompressionScheme) {
   std::string FilenamesStr;
   {
     raw_string_ostream FilenamesOS{FilenamesStr};
@@ -49,13 +51,18 @@ void CoverageFilenamesSectionWriter::write(
 
   SmallVector<uint8_t, 128> CompressedStr;
 
-  CompressionScheme = CompressionScheme->whenSupported();
-  bool doCompression = CompressionScheme->notNone();
+  OptionalCompressionScheme =
+      compression::noneIfUnsupported(OptionalCompressionScheme);
+  compression::CompressionKind CompressionScheme =
+      compression::CompressionKind::Unknown;
+  bool doCompression = bool(OptionalCompressionScheme);
 
-  if (doCompression)
+  if (doCompression) {
+    CompressionScheme = *OptionalCompressionScheme;
     CompressionScheme->compress(arrayRefFromStringRef(FilenamesStr),
                                 CompressedStr,
-                                CompressionScheme->getBestSizeLevel());
+                                CompressionScheme->BestSizeLevel);
+  }
 
   // ::= <num-filenames>
   //     <uncompressed-len>
@@ -67,8 +74,7 @@ void CoverageFilenamesSectionWriter::write(
   encodeULEB128(FilenamesStr.size(), OS);
   encodeULEB128(doCompression ? CompressedStr.size() : 0U, OS);
   if (doCompression)
-    encodeULEB128(static_cast<uint8_t>(CompressionScheme->getAlgorithmId()),
-                  OS);
+    encodeULEB128(uint8_t(CompressionScheme), OS);
   OS << (doCompression ? toStringRef(CompressedStr) : StringRef(FilenamesStr));
 }
 

@@ -34,7 +34,7 @@
 namespace clang {
 namespace clangd {
 
-extern llvm::compression::CompressionAlgorithm *StringTableCompressionScheme;
+extern llvm::compression::OptionalCompressionKind StringTableCompressionScheme;
 
 enum class IndexFileFormat {
   RIFF, // Versioned binary format, suitable for production use.

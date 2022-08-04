@@ -1159,22 +1159,22 @@ public:
 
 //--------------------------------------------------
 
-extern template class basic_parser<compression::CompressionAlgorithm *>;
+extern template class basic_parser<compression::OptionalCompressionKind>;
 
 template <>
-class parser<compression::CompressionAlgorithm *>
-    : public basic_parser<compression::CompressionAlgorithm *> {
+class parser<compression::OptionalCompressionKind>
+    : public basic_parser<compression::OptionalCompressionKind> {
 public:
   parser(Option &O) : basic_parser(O) {}
 
   // Return true on error.
   bool parse(Option &, StringRef, StringRef Arg,
-             compression::CompressionAlgorithm *&Value);
+             compression::OptionalCompressionKind &Value);
 
   // Overload in subclass to provide a better default value.
   StringRef getValueName() const override { return "compression scheme"; }
 
-  void printOptionDiff(const Option &O, compression::CompressionAlgorithm *V,
+  void printOptionDiff(const Option &O, compression::OptionalCompressionKind V,
                        OptVal Default, size_t GlobalWidth) const;
 
   // An out-of-line virtual method to provide a 'home' for this class.

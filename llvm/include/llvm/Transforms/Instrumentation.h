@@ -121,7 +121,7 @@ struct InstrProfOptions {
   // Name of the profile file to use as output
   std::string InstrProfileOutput;
 
-  compression::CompressionAlgorithm *CompressionScheme;
+  compression::OptionalCompressionKind OptionalCompressionScheme;
 
   InstrProfOptions() = default;
 };

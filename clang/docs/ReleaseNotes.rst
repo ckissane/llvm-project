@@ -49,9 +49,18 @@ Major New Features
 
 Bug Fixes
 ---------
+- Fixes an accepts-invalid bug in C when using a ``_Noreturn`` function
+  specifier on something other than a function declaration. This fixes
+  `Issue 56800 <https://github.com/llvm/llvm-project/issues/56800>`_.
+- Fix `#56772 <https://github.com/llvm/llvm-project/issues/56772>`_ - invalid
+  destructor names were incorrectly accepted on template classes.
 
 Improvements to Clang's diagnostics
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+- Clang will now correctly diagnose as ill-formed a constant expression where an
+  enum without a fixed underlying type is set to a value outside the range of
+  the enumeration's values. Fixes
+  `Issue 50055: <https://github.com/llvm/llvm-project/issues/50055>`_.
 
 Non-comprehensive list of changes in this release
 -------------------------------------------------

@@ -14,6 +14,7 @@
 #define LLVM_SUPPORT_COMPRESSION_H
 
 #include "llvm/ADT/ArrayRef.h"
+#include "llvm/ADT/Optional.h"
 #include "llvm/Support/DataTypes.h"
 #include "llvm/Support/Error.h"
 #include "llvm/Support/ErrorHandling.h"
@@ -24,206 +25,102 @@ class Error;
 
 namespace compression {
 
-enum class SupportCompressionType : uint8_t {
-  Unknown = 255, ///< Abstract compression
-  None = 0,      ///< No compression
-  Zlib = 1,      ///< zlib style complession
-  ZStd = 2,      ///< zstd style complession
-};
-
-// This is the base class of all compression algorithms that llvm support
-// handles.
-
-class CompressionAlgorithm {
-public:
-  virtual SupportCompressionType getAlgorithmId() = 0;
-
-  virtual StringRef getName() = 0;
-
-  virtual bool supported() = 0;
-
-  virtual int getBestSpeedLevel() = 0;
-  virtual int getDefaultLevel() = 0;
-  virtual int getBestSizeLevel() = 0;
-
+struct CompressionAlgorithm {
+  const StringRef Name;
+  const int BestSpeedLevel;
+  const int DefaultLevel;
+  const int BestSizeLevel;
   virtual void compress(ArrayRef<uint8_t> Input,
                         SmallVectorImpl<uint8_t> &CompressedBuffer,
                         int Level) = 0;
-  virtual void compress(ArrayRef<uint8_t> Input,
-                        SmallVectorImpl<uint8_t> &CompressedBuffer) = 0;
-
   virtual Error decompress(ArrayRef<uint8_t> Input, uint8_t *UncompressedBuffer,
                            size_t &UncompressedSize) = 0;
-  virtual Error decompress(ArrayRef<uint8_t> Input,
-                           SmallVectorImpl<uint8_t> &UncompressedBuffer,
-                           size_t UncompressedSize) = 0;
-
-  virtual CompressionAlgorithm *when(bool useCompression) = 0;
-  virtual CompressionAlgorithm *whenSupported() = 0;
-
-  virtual bool notNone() = 0;
-};
-class NoneCompressionAlgorithm;
-class UnknownCompressionAlgorithm;
-class ZStdCompressionAlgorithm;
-class ZlibCompressionAlgorithm;
-
-template <class CompressionAlgorithmType>
-class CompressionAlgorithmImpl : public CompressionAlgorithm {
-public:
-  virtual SupportCompressionType getAlgorithmId() {
-    return CompressionAlgorithmType::AlgorithmId;
+  void compress(ArrayRef<uint8_t> Input,
+                SmallVectorImpl<uint8_t> &CompressedBuffer) {
+    return compress(Input, CompressedBuffer, this->DefaultLevel);
   }
 
-  virtual StringRef getName() { return CompressionAlgorithmType::Name; }
-
-  virtual bool supported() { return CompressionAlgorithmType::Supported(); }
-
-  virtual int getBestSpeedLevel() {
-    return CompressionAlgorithmType::BestSpeedCompression;
-  }
-  virtual int getDefaultLevel() {
-    return CompressionAlgorithmType::DefaultCompression;
-  }
-  virtual int getBestSizeLevel() {
-    return CompressionAlgorithmType::BestSizeCompression;
-  }
-
-  virtual void compress(ArrayRef<uint8_t> Input,
-                        SmallVectorImpl<uint8_t> &CompressedBuffer, int Level) {
-
-    return CompressionAlgorithmType::Compress(Input, CompressedBuffer, Level);
-  }
-  virtual void compress(ArrayRef<uint8_t> Input,
-                        SmallVectorImpl<uint8_t> &CompressedBuffer) {
-    return CompressionAlgorithmType::Compress(
-        Input, CompressedBuffer, CompressionAlgorithmType::DefaultCompression);
-  }
-
-  virtual Error decompress(ArrayRef<uint8_t> Input, uint8_t *UncompressedBuffer,
-                           size_t &UncompressedSize) {
-    return CompressionAlgorithmType::Decompress(Input, UncompressedBuffer,
-                                                UncompressedSize);
-  }
-  virtual Error decompress(ArrayRef<uint8_t> Input,
-                           SmallVectorImpl<uint8_t> &UncompressedBuffer,
-                           size_t UncompressedSize) {
+  Error decompress(ArrayRef<uint8_t> Input,
+                   SmallVectorImpl<uint8_t> &UncompressedBuffer,
+                   size_t UncompressedSize) {
     UncompressedBuffer.resize_for_overwrite(UncompressedSize);
-    Error E = CompressionAlgorithmType::Decompress(
-        Input, UncompressedBuffer.data(), UncompressedSize);
+    Error E = decompress(Input, UncompressedBuffer.data(), UncompressedSize);
     if (UncompressedSize < UncompressedBuffer.size())
       UncompressedBuffer.truncate(UncompressedSize);
     return E;
   }
 
-  virtual CompressionAlgorithm *when(bool useCompression);
-  virtual CompressionAlgorithm *whenSupported() {
-    return this->when(CompressionAlgorithmType::Supported());
+protected:
+  CompressionAlgorithm(StringRef Name, int BestSpeedLevel, int DefaultLevel,
+                       int BestSizeLevel)
+      : Name(Name), BestSpeedLevel(BestSpeedLevel), DefaultLevel(DefaultLevel),
+        BestSizeLevel(BestSizeLevel) {}
+};
+
+class CompressionKind {
+private:
+  uint8_t x;
+
+protected:
+  friend constexpr llvm::Optional<CompressionKind>
+  getOptionalCompressionKind(uint8_t y);
+  // because getOptionalCompressionKind is the only friend:
+  // we can trust the value of y is valid
+  constexpr CompressionKind(uint8_t y) : x(y) {}
+
+public:
+  constexpr operator uint8_t() const { return x; }
+  CompressionAlgorithm *operator->() const;
+
+  constexpr operator bool() const;
+
+  constexpr operator StringRef() const;
+
+  static const llvm::compression::CompressionKind Unknown, Zlib, ZStd;
+};
+constexpr inline const llvm::compression::CompressionKind
+    llvm::compression::CompressionKind::Unknown{255}, ///< Abstract compression
+    llvm::compression::CompressionKind::Zlib{1}, ///< zlib style complession
+    llvm::compression::CompressionKind::ZStd{2}; ///< zstd style complession
+typedef llvm::Optional<CompressionKind> OptionalCompressionKind;
+
+constexpr CompressionKind::operator bool() const {
+  switch (uint8_t(x)) {
+  case uint8_t(CompressionKind::Zlib):
+    return LLVM_ENABLE_ZLIB;
+  case uint8_t(CompressionKind::ZStd):
+    return LLVM_ENABLE_ZSTD;
+  default:
+    return false;
   }
+}
 
-  virtual bool notNone() {
-    return CompressionAlgorithmType::AlgorithmId !=
-           SupportCompressionType::None;
+// so that commanbd line option implementation works
+inline llvm::raw_ostream &operator<<(llvm::raw_ostream &OS,
+                                     const CompressionKind &B) {
+  OS << (B->Name);
+  return OS;
+}
+
+constexpr bool operator==(CompressionKind left, CompressionKind right) {
+  return uint8_t(left) == uint8_t(right);
+}
+
+OptionalCompressionKind noneIfUnsupported(CompressionKind left);
+
+OptionalCompressionKind noneIfUnsupported(OptionalCompressionKind left);
+
+constexpr OptionalCompressionKind getOptionalCompressionKind(uint8_t y) {
+  switch (y) {
+  case uint8_t(0):
+    return NoneType();
+  case uint8_t(CompressionKind::Zlib):
+  case uint8_t(CompressionKind::ZStd):
+    return CompressionKind(y);
+  default:
+    return CompressionKind::Unknown;
   }
-};
-
-class ZStdCompressionAlgorithm
-    : public CompressionAlgorithmImpl<ZStdCompressionAlgorithm> {
-public:
-  constexpr static SupportCompressionType AlgorithmId =
-      SupportCompressionType::ZStd;
-  constexpr static StringRef Name = "zstd";
-  constexpr static int BestSpeedCompression = 1;
-  constexpr static int DefaultCompression = 5;
-  constexpr static int BestSizeCompression = 12;
-  static void Compress(ArrayRef<uint8_t> Input,
-                       SmallVectorImpl<uint8_t> &CompressedBuffer, int Level);
-  static Error Decompress(ArrayRef<uint8_t> Input, uint8_t *UncompressedBuffer,
-                          size_t &UncompressedSize);
-  static bool Supported();
-
-  static ZStdCompressionAlgorithm *Instance;
-
-protected:
-  constexpr ZStdCompressionAlgorithm(){};
-};
-
-class ZlibCompressionAlgorithm
-    : public CompressionAlgorithmImpl<ZlibCompressionAlgorithm> {
-public:
-  constexpr static SupportCompressionType AlgorithmId =
-      SupportCompressionType::Zlib;
-  constexpr static StringRef Name = "zlib";
-  constexpr static int BestSpeedCompression = 1;
-  constexpr static int DefaultCompression = 6;
-  constexpr static int BestSizeCompression = 9;
-  static void Compress(ArrayRef<uint8_t> Input,
-                       SmallVectorImpl<uint8_t> &CompressedBuffer, int Level);
-  static Error Decompress(ArrayRef<uint8_t> Input, uint8_t *UncompressedBuffer,
-                          size_t &UncompressedSize);
-  static bool Supported();
-
-  static ZlibCompressionAlgorithm *Instance;
-
-protected:
-  constexpr ZlibCompressionAlgorithm(){};
-};
-
-class UnknownCompressionAlgorithm
-    : public CompressionAlgorithmImpl<UnknownCompressionAlgorithm> {
-public:
-  constexpr static SupportCompressionType AlgorithmId =
-      SupportCompressionType::Unknown;
-  constexpr static StringRef Name = "unknown";
-  constexpr static int BestSpeedCompression = -999;
-  constexpr static int DefaultCompression = -999;
-  constexpr static int BestSizeCompression = -999;
-  static void Compress(ArrayRef<uint8_t> Input,
-                       SmallVectorImpl<uint8_t> &CompressedBuffer, int Level);
-  static Error Decompress(ArrayRef<uint8_t> Input, uint8_t *UncompressedBuffer,
-                          size_t &UncompressedSize);
-  static bool Supported();
-
-  static UnknownCompressionAlgorithm *Instance;
-
-protected:
-  constexpr UnknownCompressionAlgorithm(){};
-};
-class NoneCompressionAlgorithm
-    : public CompressionAlgorithmImpl<NoneCompressionAlgorithm> {
-
-public:
-  constexpr static SupportCompressionType AlgorithmId =
-      SupportCompressionType::None;
-  constexpr static StringRef Name = "none";
-  constexpr static int BestSpeedCompression = 0;
-  constexpr static int DefaultCompression = 0;
-  constexpr static int BestSizeCompression = 0;
-  static void Compress(ArrayRef<uint8_t> Input,
-                       SmallVectorImpl<uint8_t> &CompressedBuffer, int Level);
-  static Error Decompress(ArrayRef<uint8_t> Input, uint8_t *UncompressedBuffer,
-                          size_t &UncompressedSize);
-  static bool Supported();
-
-  static NoneCompressionAlgorithm *Instance;
-
-protected:
-  constexpr NoneCompressionAlgorithm(){};
-};
-
-static NoneCompressionAlgorithm *NoneCompression =
-    NoneCompressionAlgorithm::Instance;
-static UnknownCompressionAlgorithm *UnknownCompression =
-    UnknownCompressionAlgorithm::Instance;
-static ZStdCompressionAlgorithm *ZStdCompression =
-    ZStdCompressionAlgorithm::Instance;
-static ZlibCompressionAlgorithm *ZlibCompression =
-    ZlibCompressionAlgorithm::Instance;
-
-llvm::compression::CompressionAlgorithm *
-getCompressionAlgorithm(SupportCompressionType CompressionSchemeId);
-llvm::compression::CompressionAlgorithm *
-getCompressionAlgorithm(uint8_t CompressionSchemeId);
+}
 
 } // End of namespace compression
 

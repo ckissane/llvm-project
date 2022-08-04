@@ -1719,6 +1719,80 @@ bool Sema::CheckRedeclarationInModule(NamedDecl *New, NamedDecl *Old) {
   return false;
 }
 
+// Check the redefinition in C++20 Modules.
+//
+// [basic.def.odr]p14:
+// For any definable item D with definitions in multiple translation units,
+// - if D is a non-inline non-templated function or variable, or
+// - if the definitions in different translation units do not satisfy the
+// following requirements,
+//   the program is ill-formed; a diagnostic is required only if the definable
+//   item is attached to a named module and a prior definition is reachable at
+//   the point where a later definition occurs.
+// - Each such definition shall not be attached to a named module
+// ([module.unit]).
+// - Each such definition shall consist of the same sequence of tokens, ...
+// ...
+//
+// Return true if the redefinition is not allowed. Return false otherwise.
+bool Sema::IsRedefinitionInModule(const NamedDecl *New,
+                                     const NamedDecl *Old) const {
+  assert(getASTContext().isSameEntity(New, Old) &&
+         "New and Old are not the same definition, we should diagnostic it "
+         "immediately instead of checking it.");
+  assert(const_cast<Sema *>(this)->isReachable(New) &&
+         const_cast<Sema *>(this)->isReachable(Old) &&
+         "We shouldn't see unreachable definitions here.");
+
+  Module *NewM = New->getOwningModule();
+  Module *OldM = Old->getOwningModule();
+
+  // We only checks for named modules here. The header like modules is skipped.
+  // FIXME: This is not right if we import the header like modules in the module
+  // purview.
+  //
+  // For example, assuming "header.h" provides definition for `D`.
+  // ```C++
+  // //--- M.cppm
+  // export module M;
+  // import "header.h"; // or #include "header.h" but import it by clang modules
+  // actually.
+  //
+  // //--- Use.cpp
+  // import M;
+  // import "header.h"; // or uses clang modules.
+  // ```
+  //
+  // In this case, `D` has multiple definitions in multiple TU (M.cppm and
+  // Use.cpp) and `D` is attached to a named module `M`. The compiler should
+  // reject it. But the current implementation couldn't detect the case since we
+  // don't record the information about the importee modules.
+  //
+  // But this might not be painful in practice. Since the design of C++20 Named
+  // Modules suggests us to use headers in global module fragment instead of
+  // module purview.
+  if (NewM && NewM->isHeaderLikeModule())
+    NewM = nullptr;
+  if (OldM && OldM->isHeaderLikeModule())
+    OldM = nullptr;
+
+  if (!NewM && !OldM)
+    return true;
+
+  // [basic.def.odr]p14.3
+  // Each such definition shall not be attached to a named module
+  // ([module.unit]).
+  if ((NewM && NewM->isModulePurview()) || (OldM && OldM->isModulePurview()))
+    return true;
+
+  // Then New and Old lives in the same TU if their share one same module unit.
+  if (NewM)
+    NewM = NewM->getTopLevelModule();
+  if (OldM)
+    OldM = OldM->getTopLevelModule();
+  return OldM == NewM;
+}
+
 static bool isUsingDecl(NamedDecl *D) {
   return isa<UsingShadowDecl>(D) ||
          isa<UnresolvedUsingTypenameDecl>(D) ||
@@ -2957,7 +3031,7 @@ static void checkNewAttributesAfterDef(Sema &S, Decl *New, const Decl *Old) {
       continue;
     } else if (isa<OMPDeclareVariantAttr>(NewAttribute)) {
       // We allow to add OMP[Begin]DeclareVariantAttr to be added to
-      // declarations after defintions.
+      // declarations after definitions.
       ++I;
       continue;
     }
@@ -10490,7 +10564,7 @@ static Attr *getImplicitCodeSegAttrFromClass(Sema &S, const FunctionDecl *FD) {
 /// (from the current #pragma code-seg value).
 ///
 /// \param FD Function being declared.
-/// \param IsDefinition Whether it is a definition or just a declarartion.
+/// \param IsDefinition Whether it is a definition or just a declaration.
 /// \returns A CodeSegAttr or SectionAttr to apply to the function or
 ///          nullptr if no attribute should be added.
 Attr *Sema::getImplicitCodeSegOrSectionAttrForFunction(const FunctionDecl *FD,
@@ -11422,17 +11496,12 @@ bool Sema::CheckFunctionDeclaration(Scope *S, FunctionDecl *NewFD,
       CXXRecordDecl *Record = Destructor->getParent();
       QualType ClassType = Context.getTypeDeclType(Record);
 
-      // FIXME: Shouldn't we be able to perform this check even when the class
-      // type is dependent? Both gcc and edg can handle that.
-      if (!ClassType->isDependentType()) {
-        DeclarationName Name
-          = Context.DeclarationNames.getCXXDestructorName(
-                                        Context.getCanonicalType(ClassType));
-        if (NewFD->getDeclName() != Name) {
-          Diag(NewFD->getLocation(), diag::err_destructor_name);
-          NewFD->setInvalidDecl();
-          return Redeclaration;
-        }
+      DeclarationName Name = Context.DeclarationNames.getCXXDestructorName(
+          Context.getCanonicalType(ClassType));
+      if (NewFD->getDeclName() != Name) {
+        Diag(NewFD->getLocation(), diag::err_destructor_name);
+        NewFD->setInvalidDecl();
+        return Redeclaration;
       }
     } else if (auto *Guide = dyn_cast<CXXDeductionGuideDecl>(NewFD)) {
       if (auto *TD = Guide->getDescribedFunctionTemplate())
@@ -15413,8 +15482,8 @@ NamedDecl *Sema::ImplicitlyDefineFunction(SourceLocation Loc,
   // Because typo correction is expensive, only do it if the implicit
   // function declaration is going to be treated as an error.
   //
-  // Perform the corection before issuing the main diagnostic, as some consumers
-  // use typo-correction callbacks to enhance the main diagnostic.
+  // Perform the correction before issuing the main diagnostic, as some
+  // consumers use typo-correction callbacks to enhance the main diagnostic.
   if (S && !ExternCPrev &&
       (Diags.getDiagnosticLevel(diag_id, Loc) >= DiagnosticsEngine::Error)) {
     DeclFilterCCC<FunctionDecl> CCC{};
@@ -19137,7 +19206,7 @@ void Sema::ActOnPragmaRedefineExtname(IdentifierInfo* Name,
     else
       Diag(PrevDecl->getLocation(), diag::warn_redefine_extname_not_applied)
           << /*Variable*/(isa<FunctionDecl>(PrevDecl) ? 0 : 1) << PrevDecl;
-  // Otherwise, add a label atttibute to ExtnameUndeclaredIdentifiers.
+    // Otherwise, add a label attribute to ExtnameUndeclaredIdentifiers.
   } else
     (void)ExtnameUndeclaredIdentifiers.insert(std::make_pair(Name, Attr));
 }

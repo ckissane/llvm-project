@@ -119,37 +119,47 @@ Error RawCoverageFilenamesReader::read(CovMapVersion Version) {
     return Err;
 
   if (CompressedLen > 0) {
-    compression::CompressionAlgorithm *CompressionScheme =
-        compression::ZlibCompression;
+    compression::OptionalCompressionKind OptionalCompressionScheme =
+        compression::CompressionKind::Zlib;
     if (Version >= CovMapVersion::Version7) {
       uint64_t CompressionSchemeId;
       if (auto Err = readULEB128(CompressionSchemeId))
         return Err;
-      CompressionScheme =
-          compression::getCompressionAlgorithm(CompressionSchemeId);
+      OptionalCompressionScheme =
+          compression::getOptionalCompressionKind(CompressionSchemeId);
     }
-    if (!CompressionScheme->supported())
-      return make_error<CoverageMapError>(
-          coveragemap_error::decompression_failed);
+    if (OptionalCompressionScheme) {
+      compression::CompressionKind CompressionScheme =
+          *OptionalCompressionScheme;
+      if (!CompressionScheme)
+        return make_error<CoverageMapError>(
+            coveragemap_error::decompression_failed);
 
-    // Allocate memory for the decompressed filenames.
-    SmallVector<uint8_t, 0> StorageBuf;
+      // Allocate memory for the decompressed filenames.
+      SmallVector<uint8_t, 0> StorageBuf;
 
-    // Read compressed filenames.
-    StringRef CompressedFilenames = Data.substr(0, CompressedLen);
-    Data = Data.substr(CompressedLen);
-    auto Err = CompressionScheme->decompress(
-        arrayRefFromStringRef(CompressedFilenames), StorageBuf,
-        UncompressedLen);
-    if (Err) {
-      consumeError(std::move(Err));
-      return make_error<CoverageMapError>(
-          coveragemap_error::decompression_failed);
+      // Read compressed filenames.
+      StringRef CompressedFilenames = Data.substr(0, CompressedLen);
+      Data = Data.substr(CompressedLen);
+      auto Err = CompressionScheme->decompress(
+          arrayRefFromStringRef(CompressedFilenames), StorageBuf,
+          UncompressedLen);
+      if (Err) {
+        consumeError(std::move(Err));
+        return make_error<CoverageMapError>(
+            coveragemap_error::decompression_failed);
+      }
+
+      RawCoverageFilenamesReader Delegate(toStringRef(StorageBuf), Filenames,
+                                          CompilationDir);
+      return Delegate.readUncompressed(Version, NumFilenames);
+    } else {
+      StringRef CompressedFilenames = Data.substr(0, CompressedLen);
+      Data = Data.substr(CompressedLen);
+      RawCoverageFilenamesReader Delegate(CompressedFilenames, Filenames,
+                                          CompilationDir);
+      return Delegate.readUncompressed(Version, NumFilenames);
     }
-
-    RawCoverageFilenamesReader Delegate(toStringRef(StorageBuf), Filenames,
-                                        CompilationDir);
-    return Delegate.readUncompressed(Version, NumFilenames);
   }
 
   return readUncompressed(Version, NumFilenames);

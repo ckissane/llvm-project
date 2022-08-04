@@ -38,7 +38,7 @@ public:
   /// llvm::compression::NoneCompressionAlgorithm, attempt to compress the
   /// filenames.
   void write(raw_ostream &OS,
-             compression::CompressionAlgorithm *CompressionScheme);
+             compression::OptionalCompressionKind OptionalCompressionScheme);
 };
 
 /// Writer for instrumentation based coverage mapping data.

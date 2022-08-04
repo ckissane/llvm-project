@@ -402,13 +402,13 @@ int main(int argc, char **argv) {
 
   if (CompressDebugSections != DebugCompressionType::None) {
     if (CompressDebugSections == DebugCompressionType::Z) {
-      if (!compression::ZlibCompression->supported()) {
+      if (!compression::CompressionKind::Zlib) {
         WithColor::error(errs(), ProgName)
             << "build tools with zlib to enable -compress-debug-sections=zlib";
         return 1;
       }
     } else if (CompressDebugSections == DebugCompressionType::ZStd) {
-      if (!compression::ZStdCompression->supported()) {
+      if (!compression::CompressionKind::ZStd) {
         WithColor::error(errs(), ProgName)
             << "build tools with zstd to enable -compress-debug-sections=zstd";
         return 1;

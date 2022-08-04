@@ -880,20 +880,29 @@ std::error_code SampleProfileReaderExtBinaryBase::decompressSection(
   auto CompressionSchemeId = readNumber<uint64_t>();
   if (std::error_code EC = CompressionSchemeId.getError())
     return EC;
+  compression::OptionalCompressionKind OptionalCompressionScheme =
+      compression::getOptionalCompressionKind(*CompressionSchemeId);
+  if (OptionalCompressionScheme) {
+    compression::CompressionKind CompressionScheme = *OptionalCompressionScheme;
+    if (!CompressionScheme)
+      return sampleprof_error::zlib_unavailable;
 
-  compression::CompressionAlgorithm *CompressionScheme =
-      compression::getCompressionAlgorithm(*CompressionSchemeId);
-  if (!CompressionScheme->supported())
-    return sampleprof_error::zlib_unavailable;
+    uint8_t *Buffer = Allocator.Allocate<uint8_t>(DecompressBufSize);
+    size_t UCSize = DecompressBufSize;
+    llvm::Error E = CompressionScheme->decompress(
+        makeArrayRef(Data, *CompressSize), Buffer, UCSize);
+    if (E)
+      return sampleprof_error::uncompress_failed;
+    DecompressBuf = reinterpret_cast<const uint8_t *>(Buffer);
+    return sampleprof_error::success;
+  } else {
 
-  uint8_t *Buffer = Allocator.Allocate<uint8_t>(DecompressBufSize);
-  size_t UCSize = DecompressBufSize;
-  llvm::Error E = CompressionScheme->decompress(
-      makeArrayRef(Data, *CompressSize), Buffer, UCSize);
-  if (E)
-    return sampleprof_error::uncompress_failed;
-  DecompressBuf = reinterpret_cast<const uint8_t *>(Buffer);
-  return sampleprof_error::success;
+    DecompressBufSize = *CompressSize;
+    uint8_t *Buffer = Allocator.Allocate<uint8_t>(DecompressBufSize);
+    memcpy(Buffer, Data, DecompressBufSize);
+    DecompressBuf = reinterpret_cast<const uint8_t *>(Buffer);
+    return sampleprof_error::success;
+  }
 }
 
 std::error_code SampleProfileReaderExtBinaryBase::readImpl() {

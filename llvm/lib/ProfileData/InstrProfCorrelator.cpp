@@ -7,6 +7,7 @@
 //===----------------------------------------------------------------------===//
 
 #include "llvm/ProfileData/InstrProfCorrelator.h"
+#include "llvm/ADT/Optional.h"
 #include "llvm/DebugInfo/DIContext.h"
 #include "llvm/DebugInfo/DWARF/DWARFContext.h"
 #include "llvm/DebugInfo/DWARF/DWARFDie.h"
@@ -149,9 +150,9 @@ Error InstrProfCorrelatorImpl<IntPtrT>::correlateProfileData() {
     return make_error<InstrProfError>(
         instrprof_error::unable_to_correlate_profile,
         "could not find any profile metadata in debug info");
-  auto Result = collectPGOFuncNameStrings(
-      NamesVec,
-      /*CompressionScheme=*/compression::NoneCompression, Names);
+  auto Result =
+      collectPGOFuncNameStrings(NamesVec,
+                                /*CompressionScheme=*/llvm::NoneType(), Names);
   CounterOffsets.clear();
   NamesVec.clear();
   return Result;

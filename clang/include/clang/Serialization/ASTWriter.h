@@ -94,7 +94,7 @@ public:
   using RecordDataRef = ArrayRef<uint64_t>;
 
 private:
-  llvm::compression::CompressionAlgorithm *CompressionScheme;
+  llvm::compression::OptionalCompressionKind OptionalCompressionScheme;
   /// Map that provides the ID numbers of each type within the
   /// output stream, plus those deserialized from a chained PCH.
   ///
@@ -457,7 +457,7 @@ private:
 
   void WriteBlockInfoBlock();
   void WriteControlBlock(Preprocessor &PP, ASTContext &Context,
-                         StringRef isysroot, const std::string &OutputFile);
+                         StringRef isysroot, StringRef OutputFile);
 
   /// Write out the signature and diagnostic options, and return the signature.
   ASTFileSignature writeUnhashedControlBlock(Preprocessor &PP,
@@ -535,17 +535,17 @@ private:
   void WriteDecl(ASTContext &Context, Decl *D);
 
   ASTFileSignature WriteASTCore(Sema &SemaRef, StringRef isysroot,
-                                const std::string &OutputFile,
-                                Module *WritingModule);
+                                StringRef OutputFile, Module *WritingModule);
 
 public:
   /// Create a new precompiled header writer that outputs to
   /// the given bitstream.
-  ASTWriter(llvm::BitstreamWriter &Stream, SmallVectorImpl<char> &Buffer,
-            InMemoryModuleCache &ModuleCache,
-            ArrayRef<std::shared_ptr<ModuleFileExtension>> Extensions,
-            llvm::compression::CompressionAlgorithm *CompressionScheme,
-            bool IncludeTimestamps = true);
+  ASTWriter(
+      llvm::BitstreamWriter &Stream, SmallVectorImpl<char> &Buffer,
+      InMemoryModuleCache &ModuleCache,
+      ArrayRef<std::shared_ptr<ModuleFileExtension>> Extensions,
+      llvm::compression::OptionalCompressionKind OptionalCompressionScheme,
+      bool IncludeTimestamps = true);
   ~ASTWriter() override;
 
   ASTContext &getASTContext() const {
@@ -574,10 +574,11 @@ public:
   ///
   /// \return the module signature, which eventually will be a hash of
   /// the module but currently is merely a random 32-bit number.
-  ASTFileSignature WriteAST(Sema &SemaRef, const std::string &OutputFile,
+  ASTFileSignature WriteAST(Sema &SemaRef, StringRef OutputFile,
                             Module *WritingModule, StringRef isysroot,
                             bool hasErrors = false,
-                            bool ShouldCacheASTInMemory = false);
+                            bool ShouldCacheASTInMemory = false,
+                            bool OutputPathIndependent = false);
 
   /// Emit a token.
   void AddToken(const Token &Tok, RecordDataImpl &Record);
@@ -768,6 +769,7 @@ class PCHGenerator : public SemaConsumer {
   ASTWriter Writer;
   bool AllowASTWithErrors;
   bool ShouldCacheASTInMemory;
+  bool OutputPathIndependent;
 
 protected:
   ASTWriter &getWriter() { return Writer; }
@@ -780,7 +782,8 @@ public:
                std::shared_ptr<PCHBuffer> Buffer,
                ArrayRef<std::shared_ptr<ModuleFileExtension>> Extensions,
                bool AllowASTWithErrors = false, bool IncludeTimestamps = true,
-               bool ShouldCacheASTInMemory = false);
+               bool ShouldCacheASTInMemory = false,
+               bool OutputPathIndependent = false);
   ~PCHGenerator() override;
 
   void InitializeSema(Sema &S) override { SemaPtr = &S; }
