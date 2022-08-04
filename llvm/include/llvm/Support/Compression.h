@@ -64,11 +64,9 @@ private:
 protected:
   friend constexpr llvm::Optional<CompressionKind>
   getOptionalCompressionKind(uint8_t y);
-  constexpr CompressionKind(uint8_t y) : x(y) {
-    if (!(y == 1 || y == 2 || y == 255)) {
-      llvm_unreachable("unknown compression id");
-    }
-  }
+  // because getOptionalCompressionKind is the only friend:
+  // we can trust the value of y is valid
+  constexpr CompressionKind(uint8_t y) : x(y) {}
 
 public:
   constexpr operator uint8_t() const { return x; }
@@ -87,17 +85,9 @@ typedef llvm::Optional<CompressionKind> OptionalCompressionKind;
 constexpr CompressionKind::operator bool() const {
   switch (uint8_t(x)) {
   case uint8_t(CompressionKind::Zlib):
-#if LLVM_ENABLE_ZLIB
-    return true;
-#else
-    return false;
-#endif
+    return LLVM_ENABLE_ZLIB;
   case uint8_t(CompressionKind::ZStd):
-#if LLVM_ENABLE_ZSTD
-    return true;
-#else
-    return false;
-#endif
+    return LLVM_ENABLE_ZSTD;
   default:
     return false;
   }
@@ -112,10 +102,15 @@ OptionalCompressionKind noneIfUnsupported(CompressionKind left);
 OptionalCompressionKind noneIfUnsupported(OptionalCompressionKind left);
 
 constexpr OptionalCompressionKind getOptionalCompressionKind(uint8_t y) {
-  if (y == 0) {
+  switch (y) {
+  case uint8_t(0):
     return NoneType();
+  case uint8_t(CompressionKind::Zlib):
+  case uint8_t(CompressionKind::ZStd):
+    return CompressionKind(y);
+  default:
+    return CompressionKind::Unknown;
   }
-  return CompressionKind(y);
 }
 
 } // End of namespace compression
