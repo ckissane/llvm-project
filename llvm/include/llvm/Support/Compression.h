@@ -74,8 +74,6 @@ public:
 
   constexpr operator bool() const;
 
-  constexpr operator StringRef() const;
-
   static const llvm::compression::CompressionKind Unknown, Zlib, ZStd;
 };
 constexpr inline const llvm::compression::CompressionKind
