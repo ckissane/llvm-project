@@ -107,34 +107,9 @@ constexpr bool operator==(CompressionKind left, CompressionKind right) {
   return uint8_t(left) == uint8_t(right);
 }
 
-constexpr OptionalCompressionKind operator&&(CompressionKind left, bool right) {
-  if (right) {
-    return left;
-  }
-  return NoneType();
-}
-constexpr OptionalCompressionKind operator&&(OptionalCompressionKind left,
-                                             bool right) {
-  if (right) {
-    return left;
-  }
-  return NoneType();
-}
+OptionalCompressionKind noneIfUnsupported(CompressionKind left);
 
-constexpr OptionalCompressionKind operator||(CompressionKind left,
-                                             OptionalCompressionKind right) {
-  if (bool(left)) {
-    return left;
-  }
-  return right;
-}
-constexpr OptionalCompressionKind operator||(OptionalCompressionKind left,
-                                             OptionalCompressionKind right) {
-  if (!left || (!bool(*left))) {
-    return right;
-  }
-  return left;
-}
+OptionalCompressionKind noneIfUnsupported(OptionalCompressionKind left);
 
 constexpr OptionalCompressionKind getOptionalCompressionKind(uint8_t y) {
   if (y == 0) {

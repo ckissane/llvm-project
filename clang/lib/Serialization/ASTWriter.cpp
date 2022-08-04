@@ -2002,7 +2002,8 @@ static void emitBlob(llvm::BitstreamWriter &Stream, StringRef Blob,
   llvm::compression::OptionalCompressionKind OptionalCompressionScheme =
       llvm::compression::CompressionKind::Zlib;
 
-  OptionalCompressionScheme = OptionalCompressionScheme || llvm::NoneType();
+  OptionalCompressionScheme =
+      compression::noneIfUnsupported(OptionalCompressionScheme);
   if (OptionalCompressionScheme) {
     llvm::compression::CompressionKind CompressionScheme =
         *OptionalCompressionScheme;

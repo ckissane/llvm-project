@@ -51,9 +51,10 @@ void CoverageFilenamesSectionWriter::write(raw_ostream &OS, bool Compress) {
   compression::OptionalCompressionKind OptionalCompressionScheme =
       compression::CompressionKind::Zlib;
 
-  OptionalCompressionScheme =
-      (OptionalCompressionScheme && (Compress && DoInstrProfNameCompression)) ||
-      llvm::NoneType();
+  OptionalCompressionScheme = compression::noneIfUnsupported(
+      (Compress && DoInstrProfNameCompression) ? OptionalCompressionScheme
+                                               : llvm::NoneType());
+
   bool doCompression = bool(OptionalCompressionScheme);
 
   if (doCompression) {

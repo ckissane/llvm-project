@@ -175,6 +175,22 @@ protected:
 
 } // namespace
 
+OptionalCompressionKind
+llvm::compression::noneIfUnsupported(CompressionKind left) {
+  if (bool(left)) {
+    return left;
+  }
+  return NoneType();
+}
+
+OptionalCompressionKind
+llvm::compression::noneIfUnsupported(OptionalCompressionKind left) {
+  if (!left || (!bool(*left))) {
+    return NoneType();
+  }
+  return left;
+}
+
 CompressionAlgorithm *CompressionKind::operator->() const {
   switch (uint8_t(x)) {
   case uint8_t(CompressionKind::Zlib):

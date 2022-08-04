@@ -491,7 +491,8 @@ Error collectPGOFuncNameStrings(ArrayRef<GlobalVariable *> NameVars,
       compression::CompressionKind::Zlib;
   return collectPGOFuncNameStrings(
       NameStrs,
-      (OptionalCompressionScheme && (doCompression)) || llvm::NoneType(),
+      compression::noneIfUnsupported(doCompression ? OptionalCompressionScheme
+                                                   : llvm::NoneType()),
       Result);
 }
 

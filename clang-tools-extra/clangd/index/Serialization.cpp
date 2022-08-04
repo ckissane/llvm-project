@@ -193,7 +193,8 @@ public:
     }
     llvm::compression::OptionalCompressionKind OptionalCompressionScheme =
         llvm::compression::CompressionKind::Zlib;
-    OptionalCompressionScheme = OptionalCompressionScheme || llvm::NoneType();
+    OptionalCompressionScheme =
+        compression::noneIfUnsupported(OptionalCompressionScheme);
     if (OptionalCompressionScheme) {
       llvm::compression::CompressionKind CompressionScheme =
           *OptionalCompressionScheme;
