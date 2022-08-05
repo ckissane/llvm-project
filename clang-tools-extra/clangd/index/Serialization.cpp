@@ -247,8 +247,8 @@ llvm::Expected<StringTableIn> readStringTable(llvm::StringRef Data) {
         return std::move(E);
       Uncompressed = toStringRef(UncompressedStorage);
     } else
-      return error("Compressed string table, but " +
-                   (CompressionScheme->Name + " is unavailable").str());
+      return error("Compressed string table, but {0} is unavailable",
+                   CompressionScheme->Name);
   }
 
   StringTableIn Table;
