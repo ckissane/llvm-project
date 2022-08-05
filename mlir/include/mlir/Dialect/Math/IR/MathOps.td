@@ -110,6 +110,7 @@ def Math_AtanOp : Math_FloatUnaryOp<"atan">{
     %a = math.atan %b : f64
     ```
   }];
+  let hasFolder = 1;
 }
 
 //===----------------------------------------------------------------------===//
@@ -143,6 +144,7 @@ def Math_Atan2Op : Math_FloatBinaryOp<"atan2">{
     %a = math.atan2 %b, %c : f32
     ```
   }];
+  let hasFolder = 1;
 }
 
 //===----------------------------------------------------------------------===//

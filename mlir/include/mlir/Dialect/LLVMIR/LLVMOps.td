@@ -647,7 +647,8 @@ def LLVM_LandingpadOp : LLVM_Op<"landingpad"> {
 
 def LLVM_CallOp : LLVM_Op<"call",
                           [DeclareOpInterfaceMethods<FastmathFlagsInterface>,
-                           DeclareOpInterfaceMethods<CallOpInterface>]> {
+                           DeclareOpInterfaceMethods<CallOpInterface>,
+                           DeclareOpInterfaceMethods<SymbolUserOpInterface>]> {
   let summary = "Call to an LLVM function.";
   let description = [{
 
@@ -701,8 +702,8 @@ def LLVM_CallOp : LLVM_Op<"call",
             StringAttr::get($_builder.getContext(), callee), operands);
     }]>];
   let hasCustomAssemblyFormat = 1;
-  let hasVerifier = 1;
 }
+
 def LLVM_ExtractElementOp : LLVM_Op<"extractelement", [NoSideEffect]> {
   let arguments = (ins LLVM_AnyVector:$vector, AnyInteger:$position);
   let results = (outs LLVM_Type:$res);
@@ -974,7 +975,8 @@ def UnnamedAddr : LLVM_EnumAttr<
   let cppNamespace = "::mlir::LLVM";
 }
 
-def LLVM_AddressOfOp : LLVM_Op<"mlir.addressof", [NoSideEffect]> {
+def LLVM_AddressOfOp : LLVM_Op<"mlir.addressof",
+    [NoSideEffect, DeclareOpInterfaceMethods<SymbolUserOpInterface>]> {
   let arguments = (ins FlatSymbolRefAttr:$global_name);
   let results = (outs LLVM_AnyPointer:$res);
 
@@ -1036,7 +1038,6 @@ def LLVM_AddressOfOp : LLVM_Op<"mlir.addressof", [NoSideEffect]> {
   }];
 
   let assemblyFormat = "$global_name attr-dict `:` type($res)";
-  let hasVerifier = 1;
 }
 
 def LLVM_MetadataOp : LLVM_Op<"metadata", [

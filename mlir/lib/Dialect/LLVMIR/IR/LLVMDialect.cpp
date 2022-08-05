@@ -1160,7 +1160,7 @@ Operation::operand_range CallOp::getArgOperands() {
   return getOperands().drop_front(getCallee().has_value() ? 0 : 1);
 }
 
-LogicalResult CallOp::verify() {
+LogicalResult CallOp::verifySymbolUses(SymbolTableCollection &symbolTable) {
   if (getNumResults() > 1)
     return emitOpError("must have 0 or 1 result");
 
@@ -1184,7 +1184,7 @@ LogicalResult CallOp::verify() {
     fnType = ptrType.getElementType();
   } else {
     Operation *callee =
-        SymbolTable::lookupNearestSymbolFrom(*this, calleeName.getAttr());
+        symbolTable.lookupNearestSymbolFrom(*this, calleeName.getAttr());
     if (!callee)
       return emitOpError()
              << "'" << calleeName.getValue()
@@ -1729,29 +1729,32 @@ LogicalResult ResumeOp::verify() {
 // Verifier for LLVM::AddressOfOp.
 //===----------------------------------------------------------------------===//
 
-template <typename OpTy>
-static OpTy lookupSymbolInModule(Operation *parent, StringRef name) {
-  Operation *module = parent;
+static Operation *parentLLVMModule(Operation *op) {
+  Operation *module = op->getParentOp();
   while (module && !satisfiesLLVMModule(module))
     module = module->getParentOp();
   assert(module && "unexpected operation outside of a module");
-  return dyn_cast_or_null<OpTy>(
-      mlir::SymbolTable::lookupSymbolIn(module, name));
+  return module;
 }
 
 GlobalOp AddressOfOp::getGlobal() {
-  return lookupSymbolInModule<LLVM::GlobalOp>((*this)->getParentOp(),
-                                              getGlobalName());
+  return dyn_cast_or_null<GlobalOp>(
+      SymbolTable::lookupSymbolIn(parentLLVMModule(*this), getGlobalName()));
 }
 
 LLVMFuncOp AddressOfOp::getFunction() {
-  return lookupSymbolInModule<LLVM::LLVMFuncOp>((*this)->getParentOp(),
-                                                getGlobalName());
+  return dyn_cast_or_null<LLVMFuncOp>(
+      SymbolTable::lookupSymbolIn(parentLLVMModule(*this), getGlobalName()));
 }
 
-LogicalResult AddressOfOp::verify() {
-  auto global = getGlobal();
-  auto function = getFunction();
+LogicalResult
+AddressOfOp::verifySymbolUses(SymbolTableCollection &symbolTable) {
+  Operation *symbol =
+      symbolTable.lookupSymbolIn(parentLLVMModule(*this), getGlobalNameAttr());
+
+  auto global = dyn_cast_or_null<GlobalOp>(symbol);
+  auto function = dyn_cast_or_null<LLVMFuncOp>(symbol);
+
   if (!global && !function)
     return emitOpError(
         "must reference a global defined by 'llvm.mlir.global' or 'llvm.func'");
