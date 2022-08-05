@@ -98,11 +98,6 @@ constexpr bool operator==(CompressionKind Left, CompressionKind Right) {
   return uint8_t(Left) == uint8_t(Right);
 }
 
-OptionalCompressionKind noneIfUnsupported(CompressionKind CompressionScheme);
-
-OptionalCompressionKind
-noneIfUnsupported(OptionalCompressionKind OptionalCompressionScheme);
-
 constexpr OptionalCompressionKind
 getOptionalCompressionKind(uint8_t OptionalCompressionID) {
   switch (OptionalCompressionID) {

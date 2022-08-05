@@ -23,6 +23,7 @@
 #include <cstdarg>
 
 using namespace llvm;
+using namespace llvm::compression;
 
 LLVM_NODISCARD static ::testing::AssertionResult
 ErrorEquals(instrprof_error Expected, Error E) {
@@ -1149,8 +1150,8 @@ TEST_P(MaybeSparseInstrProfTest, instr_prof_symtab_compression_test) {
     std::string FuncNameStrings1;
     EXPECT_THAT_ERROR(
         collectPGOFuncNameStrings(FuncNames1,
-                                  DoCompression
-                                      ? compression::noneIfUnsupported(
+                                  DoCompression && CompressionKind::Zlib
+                                      ? llvm::Optional<CompressionKind>(
                                             compression::CompressionKind::Zlib)
                                       : llvm::NoneType(),
                                   FuncNameStrings1),
@@ -1160,8 +1161,8 @@ TEST_P(MaybeSparseInstrProfTest, instr_prof_symtab_compression_test) {
     std::string FuncNameStrings2;
     EXPECT_THAT_ERROR(
         collectPGOFuncNameStrings(FuncNames2,
-                                  DoCompression
-                                      ? compression::noneIfUnsupported(
+                                  DoCompression && CompressionKind::Zlib
+                                      ? llvm::Optional<CompressionKind>(
                                             compression::CompressionKind::Zlib)
                                       : llvm::NoneType(),
                                   FuncNameStrings2),

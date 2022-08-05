@@ -51,13 +51,9 @@ void CoverageFilenamesSectionWriter::write(raw_ostream &OS, bool Compress) {
   compression::OptionalCompressionKind OptionalCompressionScheme =
       compression::CompressionKind::Zlib;
 
-  OptionalCompressionScheme = compression::noneIfUnsupported(
-      (Compress && DoInstrProfNameCompression) ? OptionalCompressionScheme
-                                               : llvm::NoneType());
+  bool DoCompression = OptionalCompressionScheme && *OptionalCompressionScheme;
 
-  bool doCompression = bool(OptionalCompressionScheme);
-
-  if (doCompression) {
+  if (DoCompression) {
     compression::CompressionKind CompressionScheme = *OptionalCompressionScheme;
     CompressionScheme->compress(arrayRefFromStringRef(FilenamesStr),
                                 CompressedStr,
@@ -70,8 +66,8 @@ void CoverageFilenamesSectionWriter::write(raw_ostream &OS, bool Compress) {
   //     (<compressed-filenames> | <uncompressed-filenames>)
   encodeULEB128(Filenames.size(), OS);
   encodeULEB128(FilenamesStr.size(), OS);
-  encodeULEB128(doCompression ? CompressedStr.size() : 0U, OS);
-  OS << (doCompression ? toStringRef(CompressedStr) : StringRef(FilenamesStr));
+  encodeULEB128(DoCompression ? CompressedStr.size() : 0U, OS);
+  OS << (DoCompression ? toStringRef(CompressedStr) : StringRef(FilenamesStr));
 }
 
 namespace {
