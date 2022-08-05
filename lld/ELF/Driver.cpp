@@ -70,6 +70,7 @@ using namespace llvm::ELF;
 using namespace llvm::object;
 using namespace llvm::sys;
 using namespace llvm::support;
+using namespace llvm::compression;
 using namespace lld;
 using namespace lld::elf;
 
@@ -957,7 +958,7 @@ static bool getCompressDebugSections(opt::InputArgList &args) {
   if (s == "none") {
     return false;
   } else if (s == "zlib") {
-    if (!compression::CompressionKind::Zlib)
+    if (!CompressionKind::Zlib)
       error("--compress-debug-sections: zlib is not available");
   } else {
     error("unknown --compress-debug-sections value: " + s);

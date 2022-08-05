@@ -23,7 +23,7 @@ using namespace llvm::compression;
 namespace {
 
 static void testCompressionAlgorithm(
-    StringRef Input, int Level, compression::CompressionKind CompressionScheme,
+    StringRef Input, int Level, CompressionKind CompressionScheme,
     std::string ExpectedDestinationBufferTooSmallErrorMessage) {
   SmallVector<uint8_t, 0> Compressed;
   SmallVector<uint8_t, 0> Uncompressed;
@@ -51,7 +51,7 @@ static void testZlibCompression(StringRef Input, int Level) {
 }
 
 TEST(CompressionTest, Zlib) {
-  compression::CompressionKind CompressionScheme = CompressionKind::Zlib;
+  CompressionKind CompressionScheme = CompressionKind::Zlib;
   testZlibCompression("", CompressionScheme->DefaultLevel);
 
   testZlibCompression("hello, world!", CompressionScheme->BestSizeLevel);
@@ -78,7 +78,7 @@ static void testZStdCompression(StringRef Input, int Level) {
 }
 
 TEST(CompressionTest, Zstd) {
-  compression::CompressionKind CompressionScheme = CompressionKind::ZStd;
+  CompressionKind CompressionScheme = CompressionKind::ZStd;
   testZStdCompression("", CompressionScheme->DefaultLevel);
 
   testZStdCompression("hello, world!", CompressionScheme->BestSizeLevel);

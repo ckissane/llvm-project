@@ -26,6 +26,8 @@
 #include <cstdint>
 #include <vector>
 
+using namespace llvm::compression;
+
 namespace clang {
 namespace clangd {
 namespace {
@@ -191,16 +193,10 @@ public:
       RawTable.append(std::string(S));
       RawTable.push_back(0);
     }
-    llvm::compression::OptionalCompressionKind OptionalCompressionScheme =
-        llvm::compression::CompressionKind::Zlib;
-    OptionalCompressionScheme =
-        compression::noneIfUnsupported(OptionalCompressionScheme);
-    if (OptionalCompressionScheme) {
-      llvm::compression::CompressionKind CompressionScheme =
-          *OptionalCompressionScheme;
+    if (CompressionKind::Zlib) {
       llvm::SmallVector<uint8_t, 0> Compressed;
-      CompressionScheme->compress(llvm::arrayRefFromStringRef(RawTable),
-                                  Compressed);
+      CompressionKind::Zlib->compress(llvm::arrayRefFromStringRef(RawTable),
+                                      Compressed);
       write32(RawTable.size(), OS);
       OS << llvm::toStringRef(Compressed);
     } else {
@@ -232,15 +228,14 @@ llvm::Expected<StringTableIn> readStringTable(llvm::StringRef Data) {
   if (UncompressedSize == 0) // No compression
     Uncompressed = R.rest();
   else {
-    llvm::compression::CompressionKind CompressionScheme =
-        llvm::compression::CompressionKind::Zlib;
+    CompressionKind CompressionScheme = CompressionKind::Zlib;
     if (CompressionScheme) {
       // Don't allocate a massive buffer if UncompressedSize was corrupted
       // This is effective for sharded index, but not big monolithic ones, as
       // once compressed size reaches 4MB nothing can be ruled out.
       // Theoretical max ratio from https://zlib.net/zlib_tech.html
       constexpr int MaxCompressionRatio = 1032;
-      if ((CompressionScheme == llvm::compression::CompressionKind::Zlib) &&
+      if ((CompressionScheme == CompressionKind::Zlib) &&
           UncompressedSize / MaxCompressionRatio > R.rest().size())
         return error(
             "Bad stri table: uncompress {0} -> {1} bytes is implausible",

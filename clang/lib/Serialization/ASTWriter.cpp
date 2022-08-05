@@ -118,6 +118,7 @@
 
 using namespace clang;
 using namespace clang::serialization;
+using namespace llvm::compression;
 
 template <typename T, typename Allocator>
 static StringRef bytes(const std::vector<T, Allocator> &v) {
@@ -1999,14 +2000,8 @@ static void emitBlob(llvm::BitstreamWriter &Stream, StringRef Blob,
 
   // Compress the buffer if possible. We expect that almost all PCM
   // consumers will not want its contents.
-  llvm::compression::OptionalCompressionKind OptionalCompressionScheme =
-      llvm::compression::CompressionKind::Zlib;
-
-  OptionalCompressionScheme =
-      compression::noneIfUnsupported(OptionalCompressionScheme);
-  if (OptionalCompressionScheme) {
-    llvm::compression::CompressionKind CompressionScheme =
-        *OptionalCompressionScheme;
+  CompressionKind CompressionScheme = CompressionKind::Zlib;
+  if (CompressionScheme) {
     SmallVector<uint8_t, 0> CompressedBuffer;
 
     CompressionScheme->compress(llvm::arrayRefFromStringRef(Blob.drop_back(1)),

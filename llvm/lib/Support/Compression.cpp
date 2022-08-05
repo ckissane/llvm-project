@@ -176,23 +176,21 @@ protected:
 } // namespace
 
 OptionalCompressionKind
-llvm::compression::noneIfUnsupported(CompressionKind left) {
-  if (bool(left)) {
-    return left;
-  }
+llvm::compression::noneIfUnsupported(CompressionKind CompressionScheme) {
+  if (CompressionScheme)
+    return CompressionScheme;
   return NoneType();
 }
 
-OptionalCompressionKind
-llvm::compression::noneIfUnsupported(OptionalCompressionKind left) {
-  if (!left || (!bool(*left))) {
-    return NoneType();
-  }
-  return left;
+OptionalCompressionKind llvm::compression::noneIfUnsupported(
+    OptionalCompressionKind OptionalCompressionScheme) {
+  if (OptionalCompressionScheme && *OptionalCompressionScheme)
+    return OptionalCompressionScheme;
+  return NoneType();
 }
 
 CompressionAlgorithm *CompressionKind::operator->() const {
-  switch (uint8_t(x)) {
+  switch (uint8_t(CompressionID)) {
   case uint8_t(CompressionKind::Zlib):
     static ZlibCompressionAlgorithm ZlibI;
     return &ZlibI;

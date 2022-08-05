@@ -59,17 +59,18 @@ protected:
 
 class CompressionKind {
 private:
-  uint8_t x;
+  uint8_t CompressionID;
 
 protected:
   friend constexpr llvm::Optional<CompressionKind>
-  getOptionalCompressionKind(uint8_t y);
+  getOptionalCompressionKind(uint8_t OptionalCompressionID);
   // because getOptionalCompressionKind is the only friend:
   // we can trust the value of y is valid
-  constexpr CompressionKind(uint8_t y) : x(y) {}
+  constexpr CompressionKind(uint8_t CompressionID)
+      : CompressionID(CompressionID) {}
 
 public:
-  constexpr operator uint8_t() const { return x; }
+  constexpr operator uint8_t() const { return CompressionID; }
   CompressionAlgorithm *operator->() const;
 
   constexpr operator bool() const;
@@ -83,7 +84,7 @@ constexpr inline const llvm::compression::CompressionKind
 typedef llvm::Optional<CompressionKind> OptionalCompressionKind;
 
 constexpr CompressionKind::operator bool() const {
-  switch (uint8_t(x)) {
+  switch (uint8_t(CompressionID)) {
   case uint8_t(CompressionKind::Zlib):
     return LLVM_ENABLE_ZLIB;
   case uint8_t(CompressionKind::ZStd):
@@ -93,21 +94,23 @@ constexpr CompressionKind::operator bool() const {
   }
 }
 
-constexpr bool operator==(CompressionKind left, CompressionKind right) {
-  return uint8_t(left) == uint8_t(right);
+constexpr bool operator==(CompressionKind Left, CompressionKind Right) {
+  return uint8_t(Left) == uint8_t(Right);
 }
 
-OptionalCompressionKind noneIfUnsupported(CompressionKind left);
+OptionalCompressionKind noneIfUnsupported(CompressionKind CompressionScheme);
 
-OptionalCompressionKind noneIfUnsupported(OptionalCompressionKind left);
+OptionalCompressionKind
+noneIfUnsupported(OptionalCompressionKind OptionalCompressionScheme);
 
-constexpr OptionalCompressionKind getOptionalCompressionKind(uint8_t y) {
-  switch (y) {
+constexpr OptionalCompressionKind
+getOptionalCompressionKind(uint8_t OptionalCompressionID) {
+  switch (OptionalCompressionID) {
   case uint8_t(0):
     return NoneType();
   case uint8_t(CompressionKind::Zlib):
   case uint8_t(CompressionKind::ZStd):
-    return CompressionKind(y);
+    return CompressionKind(OptionalCompressionID);
   default:
     return CompressionKind::Unknown;
   }

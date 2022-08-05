@@ -55,6 +55,7 @@
 #include <vector>
 
 using namespace llvm;
+using namespace llvm::compression;
 
 static cl::opt<bool> StaticFuncFullModulePrefix(
     "static-func-full-module-prefix", cl::init(true), cl::Hidden,
@@ -437,8 +438,7 @@ uint64_t InstrProfSymtab::getFunctionHashFromAddress(uint64_t Address) {
 
 Error collectPGOFuncNameStrings(
     ArrayRef<std::string> NameStrs,
-    compression::OptionalCompressionKind OptionalCompressionScheme,
-    std::string &Result) {
+    OptionalCompressionKind OptionalCompressionScheme, std::string &Result) {
   assert(!NameStrs.empty() && "No name data to emit");
 
   uint8_t Header[16], *P = Header;
@@ -464,7 +464,7 @@ Error collectPGOFuncNameStrings(
 
   if ((!OptionalCompressionScheme) || (!(*OptionalCompressionScheme)))
     return WriteStringToResult(0, UncompressedNameStrings);
-  compression::CompressionKind CompressionScheme = *OptionalCompressionScheme;
+  CompressionKind CompressionScheme = *OptionalCompressionScheme;
   SmallVector<uint8_t, 128> CompressedNameStrings;
   CompressionScheme->compress(arrayRefFromStringRef(UncompressedNameStrings),
                               CompressedNameStrings,
@@ -487,12 +487,11 @@ Error collectPGOFuncNameStrings(ArrayRef<GlobalVariable *> NameVars,
   for (auto *NameVar : NameVars) {
     NameStrs.push_back(std::string(getPGOFuncNameVarInitializer(NameVar)));
   }
-  compression::OptionalCompressionKind OptionalCompressionScheme =
-      compression::CompressionKind::Zlib;
+  OptionalCompressionKind OptionalCompressionScheme = CompressionKind::Zlib;
   return collectPGOFuncNameStrings(
       NameStrs,
-      compression::noneIfUnsupported(doCompression ? OptionalCompressionScheme
-                                                   : llvm::NoneType()),
+      noneIfUnsupported(doCompression ? OptionalCompressionScheme
+                                      : llvm::NoneType()),
       Result);
 }
 
@@ -509,8 +508,7 @@ Error readPGOFuncNameStrings(StringRef NameStrings, InstrProfSymtab &Symtab) {
     SmallVector<uint8_t, 128> UncompressedNameStrings;
     StringRef NameStrings;
     if (isCompressed) {
-      compression::CompressionKind CompressionScheme =
-          compression::CompressionKind::Zlib;
+      CompressionKind CompressionScheme = CompressionKind::Zlib;
       if (!CompressionScheme)
         return make_error<InstrProfError>(instrprof_error::zlib_unavailable);
 

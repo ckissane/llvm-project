@@ -44,6 +44,7 @@
 #include <vector>
 
 using namespace llvm;
+using namespace llvm::compression;
 using namespace sampleprof;
 
 #define DEBUG_TYPE "samplepgo-reader"
@@ -877,12 +878,12 @@ std::error_code SampleProfileReaderExtBinaryBase::decompressSection(
   if (std::error_code EC = CompressSize.getError())
     return EC;
 
-  if (!llvm::compression::CompressionKind::Zlib)
+  if (!CompressionKind::Zlib)
     return sampleprof_error::zlib_unavailable;
 
   uint8_t *Buffer = Allocator.Allocate<uint8_t>(DecompressBufSize);
   size_t UCSize = DecompressBufSize;
-  llvm::Error E = compression::CompressionKind::Zlib->decompress(
+  llvm::Error E = CompressionKind::Zlib->decompress(
       makeArrayRef(Data, *CompressSize), Buffer, UCSize);
   if (E)
     return sampleprof_error::uncompress_failed;

@@ -144,6 +144,7 @@ using namespace clang;
 using namespace clang::serialization;
 using namespace clang::serialization::reader;
 using llvm::BitstreamCursor;
+using namespace llvm::compression;
 
 //===----------------------------------------------------------------------===//
 // ChainedASTReaderListener implementation
@@ -1462,14 +1463,7 @@ bool ASTReader::ReadSLocEntry(int ID) {
     unsigned RecCode = MaybeRecCode.get();
 
     if (RecCode == SM_SLOC_BUFFER_BLOB_COMPRESSED) {
-      uint8_t CompressionSchemeId = llvm::compression::CompressionKind::Zlib;
-      llvm::compression::OptionalCompressionKind OptionalCompressionScheme =
-          llvm::compression::getOptionalCompressionKind(CompressionSchemeId);
-      if (!OptionalCompressionScheme) {
-        return llvm::MemoryBuffer::getMemBuffer(Blob, Name, true);
-      }
-      llvm::compression::CompressionKind CompressionScheme =
-          *OptionalCompressionScheme;
+      CompressionKind CompressionScheme = CompressionKind::Zlib;
       if (!CompressionScheme) {
         Error("compression class " +
               (CompressionScheme->Name + " is not available").str());
