@@ -39,6 +39,7 @@
 #include <vector>
 
 using namespace llvm;
+using namespace llvm::compression;
 using namespace coverage;
 using namespace object;
 
@@ -119,28 +120,29 @@ Error RawCoverageFilenamesReader::read(CovMapVersion Version) {
     return Err;
 
   if (CompressedLen > 0) {
-    if (!compression::CompressionKind::Zlib)
-      return make_error<CoverageMapError>(
-          coveragemap_error::decompression_failed);
+    if (CompressionKind CompressionScheme = CompressionKind::Zlib) {
 
-    // Allocate memory for the decompressed filenames.
-    SmallVector<uint8_t, 0> StorageBuf;
+      // Allocate memory for the decompressed filenames.
+      SmallVector<uint8_t, 0> StorageBuf;
 
-    // Read compressed filenames.
-    StringRef CompressedFilenames = Data.substr(0, CompressedLen);
-    Data = Data.substr(CompressedLen);
-    auto Err = compression::CompressionKind::Zlib->decompress(
-        arrayRefFromStringRef(CompressedFilenames), StorageBuf,
-        UncompressedLen);
-    if (Err) {
-      consumeError(std::move(Err));
-      return make_error<CoverageMapError>(
-          coveragemap_error::decompression_failed);
+      // Read compressed filenames.
+      StringRef CompressedFilenames = Data.substr(0, CompressedLen);
+      Data = Data.substr(CompressedLen);
+      auto Err = CompressionScheme->decompress(
+          arrayRefFromStringRef(CompressedFilenames), StorageBuf,
+          UncompressedLen);
+      if (Err) {
+        consumeError(std::move(Err));
+        return make_error<CoverageMapError>(
+            coveragemap_error::decompression_failed);
+      }
+
+      RawCoverageFilenamesReader Delegate(toStringRef(StorageBuf), Filenames,
+                                          CompilationDir);
+      return Delegate.readUncompressed(Version, NumFilenames);
     }
-
-    RawCoverageFilenamesReader Delegate(toStringRef(StorageBuf), Filenames,
-                                        CompilationDir);
-    return Delegate.readUncompressed(Version, NumFilenames);
+    return make_error<CoverageMapError>(
+        coveragemap_error::decompression_failed);
   }
 
   return readUncompressed(Version, NumFilenames);

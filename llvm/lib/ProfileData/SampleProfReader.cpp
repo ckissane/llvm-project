@@ -878,17 +878,18 @@ std::error_code SampleProfileReaderExtBinaryBase::decompressSection(
   if (std::error_code EC = CompressSize.getError())
     return EC;
 
-  if (!CompressionKind::Zlib)
-    return sampleprof_error::zlib_unavailable;
+  if (CompressionKind CompressionScheme = CompressionKind::Zlib) {
 
-  uint8_t *Buffer = Allocator.Allocate<uint8_t>(DecompressBufSize);
-  size_t UCSize = DecompressBufSize;
-  llvm::Error E = CompressionKind::Zlib->decompress(
-      makeArrayRef(Data, *CompressSize), Buffer, UCSize);
-  if (E)
-    return sampleprof_error::uncompress_failed;
-  DecompressBuf = reinterpret_cast<const uint8_t *>(Buffer);
-  return sampleprof_error::success;
+    uint8_t *Buffer = Allocator.Allocate<uint8_t>(DecompressBufSize);
+    size_t UCSize = DecompressBufSize;
+    llvm::Error E = CompressionScheme->decompress(
+        makeArrayRef(Data, *CompressSize), Buffer, UCSize);
+    if (E)
+      return sampleprof_error::uncompress_failed;
+    DecompressBuf = reinterpret_cast<const uint8_t *>(Buffer);
+    return sampleprof_error::success;
+  }
+  return sampleprof_error::zlib_unavailable;
 }
 
 std::error_code SampleProfileReaderExtBinaryBase::readImpl() {

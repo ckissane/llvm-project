@@ -228,27 +228,27 @@ llvm::Expected<StringTableIn> readStringTable(llvm::StringRef Data) {
   if (UncompressedSize == 0) // No compression
     Uncompressed = R.rest();
   else {
-    CompressionKind CompressionScheme = CompressionKind::Zlib;
-    if (CompressionScheme) {
+    // Don't extratc to a CompressionKind CompressionScheme variable
+    // as ratio check is zlib specific
+    if (CompressionKind::Zlib) {
       // Don't allocate a massive buffer if UncompressedSize was corrupted
       // This is effective for sharded index, but not big monolithic ones, as
       // once compressed size reaches 4MB nothing can be ruled out.
       // Theoretical max ratio from https://zlib.net/zlib_tech.html
       constexpr int MaxCompressionRatio = 1032;
-      if ((CompressionScheme == CompressionKind::Zlib) &&
-          UncompressedSize / MaxCompressionRatio > R.rest().size())
+      if (UncompressedSize / MaxCompressionRatio > R.rest().size())
         return error(
             "Bad stri table: uncompress {0} -> {1} bytes is implausible",
             R.rest().size(), UncompressedSize);
 
-      if (llvm::Error E = CompressionScheme->decompress(
+      if (llvm::Error E = CompressionKind::Zlib->decompress(
               llvm::arrayRefFromStringRef(R.rest()), UncompressedStorage,
               UncompressedSize))
         return std::move(E);
       Uncompressed = toStringRef(UncompressedStorage);
     } else
       return error("Compressed string table, but {0} is unavailable",
-                   CompressionScheme->Name);
+                   CompressionKind::Zlib->Name);
   }
 
   StringTableIn Table;

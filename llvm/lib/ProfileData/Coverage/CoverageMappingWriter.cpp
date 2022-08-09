@@ -25,6 +25,7 @@
 #include <vector>
 
 using namespace llvm;
+using namespace llvm::compression;
 using namespace coverage;
 
 CoverageFilenamesSectionWriter::CoverageFilenamesSectionWriter(
@@ -48,13 +49,10 @@ void CoverageFilenamesSectionWriter::write(raw_ostream &OS, bool Compress) {
   }
 
   SmallVector<uint8_t, 128> CompressedStr;
-  compression::OptionalCompressionKind OptionalCompressionScheme =
-      compression::CompressionKind::Zlib;
-
-  bool DoCompression = OptionalCompressionScheme && *OptionalCompressionScheme;
-
+  CompressionKind CompressionScheme = CompressionKind::Zlib;
+  bool DoCompression =
+      Compress && DoInstrProfNameCompression && CompressionScheme;
   if (DoCompression) {
-    compression::CompressionKind CompressionScheme = *OptionalCompressionScheme;
     CompressionScheme->compress(arrayRefFromStringRef(FilenamesStr),
                                 CompressedStr,
                                 CompressionScheme->BestSizeLevel);
