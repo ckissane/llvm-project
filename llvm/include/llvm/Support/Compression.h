@@ -37,7 +37,6 @@ typedef CompressionImpl *CompressionImplRef;
 
 CompressionSpecRef getCompressionSpec(uint8_t Kind);
 CompressionSpecRef getCompressionSpec(CompressionKind Kind);
-CompressionSpecRef getSchemeDetails(CompressionImplRef Implementation);
 
 struct CompressionSpec {
   const CompressionKind Kind;
@@ -89,8 +88,6 @@ protected:
 
 class CompressionSpecRefs {
 public:
-  static CompressionSpecRef Unknown;
-  static CompressionSpecRef None;
   static CompressionSpecRef Zlib;
   static CompressionSpecRef ZStd;
 };

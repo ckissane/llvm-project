@@ -490,10 +490,8 @@ Error collectPGOFuncNameStrings(ArrayRef<GlobalVariable *> NameVars,
     NameStrs.push_back(std::string(getPGOFuncNameVarInitializer(NameVar)));
   }
   CompressionSpecRef OptionalCompressionScheme = CompressionSpecRefs::Zlib;
-  return collectPGOFuncNameStrings(NameStrs,
-                                   doCompression ? OptionalCompressionScheme
-                                                 : CompressionSpecRefs::None,
-                                   Result);
+  return collectPGOFuncNameStrings(
+      NameStrs, doCompression ? OptionalCompressionScheme : nullptr, Result);
 }
 
 Error readPGOFuncNameStrings(StringRef NameStrings, InstrProfSymtab &Symtab) {

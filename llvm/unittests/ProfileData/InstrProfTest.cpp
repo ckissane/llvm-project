@@ -1154,7 +1154,7 @@ TEST_P(MaybeSparseInstrProfTest, instr_prof_symtab_compression_test) {
             DoCompression && (CompressionSpecRefs::Zlib &&
                               CompressionSpecRefs::Zlib->Implementation)
                 ? CompressionSpecRefs::Zlib
-                : CompressionSpecRefs::None,
+                : nullptr,
             FuncNameStrings1),
         Succeeded());
 
@@ -1166,7 +1166,7 @@ TEST_P(MaybeSparseInstrProfTest, instr_prof_symtab_compression_test) {
             DoCompression && (CompressionSpecRefs::Zlib &&
                               CompressionSpecRefs::Zlib->Implementation)
                 ? CompressionSpecRefs::Zlib
-                : CompressionSpecRefs::None,
+                : nullptr,
             FuncNameStrings2),
         Succeeded());
 

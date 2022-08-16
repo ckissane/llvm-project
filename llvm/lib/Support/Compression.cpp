@@ -187,14 +187,7 @@ CompressionSpecRef getCompressionSpec(uint8_t Kind) {
 CompressionSpecRef getCompressionSpec(CompressionKind Kind) {
   return getCompressionSpec(uint8_t(Kind));
 }
-CompressionSpecRef getSchemeDetails(CompressionImpl *Implementation) {
-  return Implementation == nullptr ? nullptr
-                                   : getCompressionSpec(Implementation->Kind);
-}
 
-CompressionSpecRef CompressionSpecRefs::Unknown =
-    getCompressionSpec(CompressionKind::Unknown);       ///< Unknown compression
-CompressionSpecRef CompressionSpecRefs::None = nullptr; ///< Lack of compression
 CompressionSpecRef CompressionSpecRefs::Zlib =
     getCompressionSpec(CompressionKind::Zlib); ///< zlib style complession
 CompressionSpecRef CompressionSpecRefs::ZStd =
