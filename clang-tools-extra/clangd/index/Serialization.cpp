@@ -16,7 +16,6 @@
 #include "support/Logger.h"
 #include "support/Trace.h"
 #include "clang/Tooling/CompilationDatabase.h"
-#include "llvm/ADT/Optional.h"
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Support/Compiler.h"
 #include "llvm/Support/Compression.h"

@@ -13,7 +13,6 @@
 
 #include "llvm/ProfileData/Coverage/CoverageMappingWriter.h"
 #include "llvm/ADT/ArrayRef.h"
-#include "llvm/ADT/Optional.h"
 #include "llvm/ADT/SmallVector.h"
 #include "llvm/ProfileData/InstrProf.h"
 #include "llvm/Support/Compression.h"
