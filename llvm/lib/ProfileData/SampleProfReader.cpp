@@ -878,11 +878,12 @@ std::error_code SampleProfileReaderExtBinaryBase::decompressSection(
   if (std::error_code EC = CompressSize.getError())
     return EC;
 
-  if (CompressionKind CompressionScheme = CompressionKind::Zlib) {
+  if (CompressionImplRef CompressionImplementation =
+          CompressionSpecRefs::Zlib->Implementation) {
 
     uint8_t *Buffer = Allocator.Allocate<uint8_t>(DecompressBufSize);
     size_t UCSize = DecompressBufSize;
-    llvm::Error E = CompressionScheme->decompress(
+    llvm::Error E = CompressionImplementation->decompress(
         makeArrayRef(Data, *CompressSize), Buffer, UCSize);
     if (E)
       return sampleprof_error::uncompress_failed;

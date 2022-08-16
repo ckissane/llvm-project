@@ -150,9 +150,9 @@ Error InstrProfCorrelatorImpl<IntPtrT>::correlateProfileData() {
     return make_error<InstrProfError>(
         instrprof_error::unable_to_correlate_profile,
         "could not find any profile metadata in debug info");
-  auto Result =
-      collectPGOFuncNameStrings(NamesVec,
-                                /*CompressionScheme=*/llvm::NoneType(), Names);
+  auto Result = collectPGOFuncNameStrings(
+      NamesVec,
+      /*CompressionScheme=*/compression::CompressionSpecRefs::None, Names);
   CounterOffsets.clear();
   NamesVec.clear();
   return Result;

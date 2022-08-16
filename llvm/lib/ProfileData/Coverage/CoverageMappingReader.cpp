@@ -120,7 +120,8 @@ Error RawCoverageFilenamesReader::read(CovMapVersion Version) {
     return Err;
 
   if (CompressedLen > 0) {
-    if (CompressionKind CompressionScheme = CompressionKind::Zlib) {
+    if (CompressionImplRef CompressionImplementation =
+            CompressionSpecRefs::Zlib->Implementation) {
 
       // Allocate memory for the decompressed filenames.
       SmallVector<uint8_t, 0> StorageBuf;
@@ -128,7 +129,7 @@ Error RawCoverageFilenamesReader::read(CovMapVersion Version) {
       // Read compressed filenames.
       StringRef CompressedFilenames = Data.substr(0, CompressedLen);
       Data = Data.substr(CompressedLen);
-      auto Err = CompressionScheme->decompress(
+      auto Err = CompressionImplementation->decompress(
           arrayRefFromStringRef(CompressedFilenames), StorageBuf,
           UncompressedLen);
       if (Err) {

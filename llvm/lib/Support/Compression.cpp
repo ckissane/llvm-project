@@ -27,7 +27,9 @@
 using namespace llvm;
 using namespace llvm::compression;
 
-namespace {
+namespace llvm {
+
+namespace compression {
 
 #if LLVM_ENABLE_ZLIB
 
@@ -47,7 +49,7 @@ static StringRef convertZlibCodeToString(int Code) {
   }
 }
 #endif
-struct ZlibCompressionAlgorithm : public CompressionAlgorithm {
+struct ZlibCompressionAlgorithm : public CompressionImpl {
 #if LLVM_ENABLE_ZLIB
 
   void compress(ArrayRef<uint8_t> Input,
@@ -96,11 +98,11 @@ struct ZlibCompressionAlgorithm : public CompressionAlgorithm {
 #endif
 
 protected:
-  friend CompressionAlgorithm *CompressionKind::operator->() const;
-  ZlibCompressionAlgorithm() : CompressionAlgorithm("zlib", 1, 6, 9) {}
+  friend CompressionSpecRef getCompressionSpec(uint8_t Kind);
+  ZlibCompressionAlgorithm() : CompressionImpl(CompressionKind::Zlib) {}
 };
 
-struct ZStdCompressionAlgorithm : public CompressionAlgorithm {
+struct ZStdCompressionAlgorithm : public CompressionImpl {
 #if LLVM_ENABLE_ZSTD
 
   void compress(ArrayRef<uint8_t> Input,
@@ -150,41 +152,53 @@ struct ZStdCompressionAlgorithm : public CompressionAlgorithm {
 #endif
 
 protected:
-  friend CompressionAlgorithm *CompressionKind::operator->() const;
-  ZStdCompressionAlgorithm() : CompressionAlgorithm("zstd", 1, 5, 12) {}
+  friend CompressionSpecRef getCompressionSpec(uint8_t Kind);
+  ZStdCompressionAlgorithm() : CompressionImpl(CompressionKind::ZStd) {}
 };
 
-struct UnknownCompressionAlgorithm : public CompressionAlgorithm {
-
-  void compress(ArrayRef<uint8_t> Input,
-                SmallVectorImpl<uint8_t> &CompressedBuffer, int Level) {
-    llvm_unreachable("method:\"compress\" is unsupported for compression "
-                     "algorithm:\"unknown\", reason:\"can't call on unknown\"");
-  };
-  Error decompress(ArrayRef<uint8_t> Input, uint8_t *UncompressedBuffer,
-                   size_t &UncompressedSize) {
-    llvm_unreachable("method:\"decompress\" is unsupported for compression "
-                     "algorithm:\"unknown\", reason:\"can't call on unknown\"");
-  }
-
-protected:
-  friend CompressionAlgorithm *CompressionKind::operator->() const;
-  UnknownCompressionAlgorithm()
-      : CompressionAlgorithm("unknown", -999, -999, -999) {}
-};
-
-} // namespace
-
-CompressionAlgorithm *CompressionKind::operator->() const {
-  switch (uint8_t(CompressionID)) {
+CompressionSpecRef getCompressionSpec(uint8_t Kind) {
+  switch (Kind) {
+  case uint8_t(0):
+    return nullptr;
   case uint8_t(CompressionKind::Zlib):
     static ZlibCompressionAlgorithm ZlibI;
-    return &ZlibI;
+    static CompressionSpec ZlibD = CompressionSpec(
+        CompressionKind::Zlib, &ZlibI, "zlib", bool(LLVM_ENABLE_ZLIB),
+        "unsupported: either llvm was compiled without LLVM_ENABLE_ZLIB "
+        "enabled, or could not find zlib at compile time",
+        1, 6, 9);
+    return &ZlibD;
   case uint8_t(CompressionKind::ZStd):
     static ZStdCompressionAlgorithm ZStdI;
-    return &ZStdI;
+    static CompressionSpec ZStdD = CompressionSpec(
+        CompressionKind::ZStd, &ZStdI, "zstd", bool(LLVM_ENABLE_ZSTD),
+        "unsupported: either llvm was compiled without LLVM_ENABLE_ZSTD "
+        "enabled, or could not find zstd at compile time",
+        1, 5, 12);
+    return &ZStdD;
   default:
-    static UnknownCompressionAlgorithm UnknownI;
-    return &UnknownI;
+    static CompressionSpec UnknownD = CompressionSpec(
+        CompressionKind::Unknown, nullptr, "unknown", false,
+        "unsupported: scheme of unknown kind", -999, -999, -999);
+    return &UnknownD;
   }
 }
+
+CompressionSpecRef getCompressionSpec(CompressionKind Kind) {
+  return getCompressionSpec(uint8_t(Kind));
+}
+CompressionSpecRef getSchemeDetails(CompressionImpl *Implementation) {
+  return Implementation == nullptr ? nullptr
+                                   : getCompressionSpec(Implementation->Kind);
+}
+
+CompressionSpecRef CompressionSpecRefs::Unknown =
+    getCompressionSpec(CompressionKind::Unknown);       ///< Unknown compression
+CompressionSpecRef CompressionSpecRefs::None = nullptr; ///< Lack of compression
+CompressionSpecRef CompressionSpecRefs::Zlib =
+    getCompressionSpec(CompressionKind::Zlib); ///< zlib style complession
+CompressionSpecRef CompressionSpecRefs::ZStd =
+    getCompressionSpec(CompressionKind::ZStd); ///< zstd style complession
+
+} // namespace compression
+} // namespace llvm

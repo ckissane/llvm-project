@@ -730,7 +730,7 @@ objcopy::parseObjcopyOptions(ArrayRef<const char *> RawArgsArr,
           "invalid or unsupported --compress-debug-sections format: %s",
           A->getValue());
     case DebugCompressionType::Z:
-      if (!compression::CompressionKind::Zlib)
+      if (!compression::CompressionSpecRefs::Zlib->Implementation)
         return createStringError(
             errc::invalid_argument,
             "LLVM was not compiled with LLVM_ENABLE_ZLIB: can not compress");
@@ -997,7 +997,8 @@ objcopy::parseObjcopyOptions(ArrayRef<const char *> RawArgsArr,
         "--decompress-debug-sections");
   }
 
-  if (Config.DecompressDebugSections && !compression::CompressionKind::Zlib)
+  if (Config.DecompressDebugSections &&
+      !compression::CompressionSpecRefs::Zlib->Implementation)
     return createStringError(
         errc::invalid_argument,
         "LLVM was not compiled with LLVM_ENABLE_ZLIB: cannot decompress");

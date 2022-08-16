@@ -1463,21 +1463,24 @@ bool ASTReader::ReadSLocEntry(int ID) {
     unsigned RecCode = MaybeRecCode.get();
 
     if (RecCode == SM_SLOC_BUFFER_BLOB_COMPRESSED) {
-      CompressionKind CompressionScheme = CompressionKind::Zlib;
-      if (!CompressionScheme) {
+      CompressionSpecRef CompressionScheme = CompressionSpecRefs::Zlib;
+
+      if (CompressionImplRef CompressionImplementation =
+              CompressionScheme->Implementation) {
+        SmallVector<uint8_t, 0> Uncompressed;
+        if (llvm::Error E = CompressionImplementation->decompress(
+                llvm::arrayRefFromStringRef(Blob), Uncompressed, Record[0])) {
+          Error("could not decompress embedded file contents: " +
+                llvm::toString(std::move(E)));
+          return nullptr;
+        }
+        return llvm::MemoryBuffer::getMemBufferCopy(
+            llvm::toStringRef(Uncompressed), Name);
+      } else {
         Error("compression class " +
               (CompressionScheme->Name + " is not available").str());
         return nullptr;
       }
-      SmallVector<uint8_t, 0> Uncompressed;
-      if (llvm::Error E = CompressionScheme->decompress(
-              llvm::arrayRefFromStringRef(Blob), Uncompressed, Record[0])) {
-        Error("could not decompress embedded file contents: " +
-              llvm::toString(std::move(E)));
-        return nullptr;
-      }
-      return llvm::MemoryBuffer::getMemBufferCopy(
-          llvm::toStringRef(Uncompressed), Name);
     } else if (RecCode == SM_SLOC_BUFFER_BLOB) {
       return llvm::MemoryBuffer::getMemBuffer(Blob.drop_back(1), Name, true);
     } else {
