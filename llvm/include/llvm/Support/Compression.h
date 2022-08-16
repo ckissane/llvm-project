@@ -43,7 +43,6 @@ struct CompressionSpec {
   const CompressionKind Kind;
   CompressionImpl *Implementation;
   const StringRef Name;
-  const bool Supported;
   const StringRef Status; // either "supported", or "unsupported: REASON"
   const int BestSpeedLevel;
   const int DefaultLevel;
@@ -54,9 +53,8 @@ protected:
   CompressionSpec(CompressionKind Kind, CompressionImpl *Implementation,
                   StringRef Name, bool Supported, StringRef Status,
                   int BestSpeedLevel, int DefaultLevel, int BestSizeLevel)
-      : Kind(Kind), Supported(Supported),
-        Implementation(Supported ? Implementation : nullptr), Name(Name),
-        Status(Supported ? "supported" : Status),
+      : Kind(Kind), Implementation(Supported ? Implementation : nullptr),
+        Name(Name), Status(Supported ? "supported" : Status),
         BestSpeedLevel(BestSpeedLevel), DefaultLevel(DefaultLevel),
         BestSizeLevel(BestSizeLevel) {}
 };

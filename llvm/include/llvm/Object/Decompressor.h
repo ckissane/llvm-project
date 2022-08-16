@@ -50,7 +50,7 @@ private:
   StringRef SectionData;
   uint64_t DecompressedSize;
   compression::CompressionSpecRef CompressionScheme =
-      compression::CompressionSpecRefs::Zlib;
+      compression::CompressionSpecRefs::None;
 };
 
 } // end namespace object

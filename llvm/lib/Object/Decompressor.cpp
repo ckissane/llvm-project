@@ -40,14 +40,11 @@ Error Decompressor::consumeCompressedSectionHeader(bool Is64Bit,
   uint64_t Offset = 0;
   uint64_t ELFCompressionSchemeId = Extractor.getUnsigned(
       &Offset, Is64Bit ? sizeof(Elf64_Word) : sizeof(Elf32_Word));
-  if (ELFCompressionSchemeId == ELFCOMPRESS_ZLIB) {
+  if (ELFCompressionSchemeId == ELFCOMPRESS_ZLIB)
     CompressionScheme = compression::CompressionSpecRefs::Zlib;
-  } else {
-    return createError("unsupported compression type");
-  }
+
   if (!CompressionScheme)
-    return createError(
-        "Decompressor provided nullptr (None) CompressionScheme*");
+    return createError("unsupported compression type");
   if (!CompressionScheme->Implementation)
     return createError(CompressionScheme->Name + " is not available");
 
