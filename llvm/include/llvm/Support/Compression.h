@@ -15,6 +15,8 @@
 
 #include "llvm/ADT/ArrayRef.h"
 #include "llvm/ADT/Optional.h"
+#include "llvm/ADT/StringRef.h"
+#include "llvm/Support/Casting.h"
 #include "llvm/Support/DataTypes.h"
 #include "llvm/Support/Error.h"
 #include "llvm/Support/ErrorHandling.h"
@@ -25,11 +27,42 @@ class Error;
 
 namespace compression {
 
-struct CompressionAlgorithm {
+enum class CompressionKind : uint8_t { Zlib = 1, ZStd = 2, Unknown = 255 };
+
+struct CompressionSpec;
+struct CompressionImpl;
+
+typedef CompressionSpec *CompressionSpecRef;
+typedef CompressionImpl *CompressionImplRef;
+
+CompressionSpecRef getCompressionSpec(uint8_t Kind);
+CompressionSpecRef getCompressionSpec(CompressionKind Kind);
+CompressionSpecRef getSchemeDetails(CompressionImplRef Implementation);
+
+struct CompressionSpec {
+  const CompressionKind Kind;
+  CompressionImpl *Implementation;
   const StringRef Name;
+  const bool Supported;
+  const StringRef Status; // either "supported", or "unsupported: REASON"
   const int BestSpeedLevel;
   const int DefaultLevel;
   const int BestSizeLevel;
+
+protected:
+  friend CompressionSpecRef getCompressionSpec(uint8_t Kind);
+  CompressionSpec(CompressionKind Kind, CompressionImpl *Implementation,
+                  StringRef Name, bool Supported, StringRef Status,
+                  int BestSpeedLevel, int DefaultLevel, int BestSizeLevel)
+      : Kind(Kind), Supported(Supported),
+        Implementation(Supported ? Implementation : nullptr), Name(Name),
+        Status(Supported ? "supported" : Status),
+        BestSpeedLevel(BestSpeedLevel), DefaultLevel(DefaultLevel),
+        BestSizeLevel(BestSizeLevel) {}
+};
+
+struct CompressionImpl {
+  const CompressionKind Kind;
   virtual void compress(ArrayRef<uint8_t> Input,
                         SmallVectorImpl<uint8_t> &CompressedBuffer,
                         int Level) = 0;
@@ -37,7 +70,8 @@ struct CompressionAlgorithm {
                            size_t &UncompressedSize) = 0;
   void compress(ArrayRef<uint8_t> Input,
                 SmallVectorImpl<uint8_t> &CompressedBuffer) {
-    return compress(Input, CompressedBuffer, this->DefaultLevel);
+    return compress(Input, CompressedBuffer,
+                    getCompressionSpec(uint8_t(this->Kind))->DefaultLevel);
   }
 
   Error decompress(ArrayRef<uint8_t> Input,
@@ -50,66 +84,19 @@ struct CompressionAlgorithm {
     return E;
   }
 
+  CompressionSpecRef spec() { return getCompressionSpec(Kind); }
+
 protected:
-  CompressionAlgorithm(StringRef Name, int BestSpeedLevel, int DefaultLevel,
-                       int BestSizeLevel)
-      : Name(Name), BestSpeedLevel(BestSpeedLevel), DefaultLevel(DefaultLevel),
-        BestSizeLevel(BestSizeLevel) {}
+  CompressionImpl(CompressionKind Kind) : Kind(Kind) {}
 };
 
-class CompressionKind {
-private:
-  uint8_t CompressionID;
-
-protected:
-  friend constexpr llvm::Optional<CompressionKind>
-  getOptionalCompressionKind(uint8_t OptionalCompressionID);
-  // because getOptionalCompressionKind is the only friend:
-  // we can trust the value of y is valid
-  constexpr CompressionKind(uint8_t CompressionID)
-      : CompressionID(CompressionID) {}
-
+class CompressionSpecRefs {
 public:
-  constexpr operator uint8_t() const { return CompressionID; }
-  CompressionAlgorithm *operator->() const;
-
-  constexpr operator bool() const;
-
-  static const llvm::compression::CompressionKind Unknown, Zlib, ZStd;
+  static CompressionSpecRef Unknown;
+  static CompressionSpecRef None;
+  static CompressionSpecRef Zlib;
+  static CompressionSpecRef ZStd;
 };
-constexpr inline const llvm::compression::CompressionKind
-    llvm::compression::CompressionKind::Unknown{255}, ///< Abstract compression
-    llvm::compression::CompressionKind::Zlib{1}, ///< zlib style complession
-    llvm::compression::CompressionKind::ZStd{2}; ///< zstd style complession
-typedef llvm::Optional<CompressionKind> OptionalCompressionKind;
-
-constexpr CompressionKind::operator bool() const {
-  switch (uint8_t(CompressionID)) {
-  case uint8_t(CompressionKind::Zlib):
-    return LLVM_ENABLE_ZLIB;
-  case uint8_t(CompressionKind::ZStd):
-    return LLVM_ENABLE_ZSTD;
-  default:
-    return false;
-  }
-}
-
-constexpr bool operator==(CompressionKind Left, CompressionKind Right) {
-  return uint8_t(Left) == uint8_t(Right);
-}
-
-constexpr OptionalCompressionKind
-getOptionalCompressionKind(uint8_t OptionalCompressionID) {
-  switch (OptionalCompressionID) {
-  case uint8_t(0):
-    return NoneType();
-  case uint8_t(CompressionKind::Zlib):
-  case uint8_t(CompressionKind::ZStd):
-    return CompressionKind(OptionalCompressionID);
-  default:
-    return CompressionKind::Unknown;
-  }
-}
 
 } // End of namespace compression
 

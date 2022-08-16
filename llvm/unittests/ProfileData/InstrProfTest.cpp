@@ -1149,23 +1149,25 @@ TEST_P(MaybeSparseInstrProfTest, instr_prof_symtab_compression_test) {
     // Compressing:
     std::string FuncNameStrings1;
     EXPECT_THAT_ERROR(
-        collectPGOFuncNameStrings(FuncNames1,
-                                  DoCompression && CompressionKind::Zlib
-                                      ? llvm::Optional<CompressionKind>(
-                                            compression::CompressionKind::Zlib)
-                                      : llvm::NoneType(),
-                                  FuncNameStrings1),
+        collectPGOFuncNameStrings(
+            FuncNames1,
+            DoCompression && (CompressionSpecRefs::Zlib &&
+                              CompressionSpecRefs::Zlib->Implementation)
+                ? CompressionSpecRefs::Zlib
+                : CompressionSpecRefs::None,
+            FuncNameStrings1),
         Succeeded());
 
     // Compressing:
     std::string FuncNameStrings2;
     EXPECT_THAT_ERROR(
-        collectPGOFuncNameStrings(FuncNames2,
-                                  DoCompression && CompressionKind::Zlib
-                                      ? llvm::Optional<CompressionKind>(
-                                            compression::CompressionKind::Zlib)
-                                      : llvm::NoneType(),
-                                  FuncNameStrings2),
+        collectPGOFuncNameStrings(
+            FuncNames2,
+            DoCompression && (CompressionSpecRefs::Zlib &&
+                              CompressionSpecRefs::Zlib->Implementation)
+                ? CompressionSpecRefs::Zlib
+                : CompressionSpecRefs::None,
+            FuncNameStrings2),
         Succeeded());
 
     for (int Padding = 0; Padding < 2; Padding++) {

@@ -1139,7 +1139,7 @@ static void RenderDebugInfoCompressionArgs(const ArgList &Args,
     if (Value == "none") {
       CmdArgs.push_back("--compress-debug-sections=none");
     } else if (Value == "zlib") {
-      if (llvm::compression::CompressionKind::Zlib) {
+      if (llvm::compression::CompressionSpecRefs::Zlib->Implementation) {
         CmdArgs.push_back(
             Args.MakeArgString("--compress-debug-sections=" + Twine(Value)));
       } else {

@@ -78,24 +78,28 @@ SampleProfileWriterExtBinaryBase::markSectionStart(SecType Type,
 }
 
 std::error_code SampleProfileWriterExtBinaryBase::compressAndOutput() {
-  compression::CompressionKind CompressionScheme =
-      compression::CompressionKind::Zlib;
-  if (!CompressionScheme)
-    return sampleprof_error::zlib_unavailable;
-  std::string &UncompressedStrings =
-      static_cast<raw_string_ostream *>(LocalBufStream.get())->str();
-  if (UncompressedStrings.size() == 0)
-    return sampleprof_error::success;
-  auto &OS = *OutputStream;
-  SmallVector<uint8_t, 128> CompressedStrings;
-  CompressionScheme->compress(arrayRefFromStringRef(UncompressedStrings),
-                              CompressedStrings,
-                              CompressionScheme->BestSizeLevel);
-  encodeULEB128(UncompressedStrings.size(), OS);
-  encodeULEB128(CompressedStrings.size(), OS);
-  OS << toStringRef(CompressedStrings);
-  UncompressedStrings.clear();
-  return sampleprof_error::success;
+
+  if (compression::CompressionSpecRef CompressionScheme =
+          compression::CompressionSpecRefs::Zlib) {
+    if (compression::CompressionImplRef CompressionImplementation =
+            CompressionScheme->Implementation) {
+      std::string &UncompressedStrings =
+          static_cast<raw_string_ostream *>(LocalBufStream.get())->str();
+      if (UncompressedStrings.size() == 0)
+        return sampleprof_error::success;
+      auto &OS = *OutputStream;
+      SmallVector<uint8_t, 128> CompressedStrings;
+      CompressionImplementation->compress(
+          arrayRefFromStringRef(UncompressedStrings), CompressedStrings,
+          CompressionImplementation->spec()->BestSizeLevel);
+      encodeULEB128(UncompressedStrings.size(), OS);
+      encodeULEB128(CompressedStrings.size(), OS);
+      OS << toStringRef(CompressedStrings);
+      UncompressedStrings.clear();
+      return sampleprof_error::success;
+    }
+  }
+  return sampleprof_error::zlib_unavailable;
 }
 
 /// Add a new section into section header table given the section type

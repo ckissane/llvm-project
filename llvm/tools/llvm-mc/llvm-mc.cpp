@@ -401,7 +401,7 @@ int main(int argc, char **argv) {
   MAI->setRelaxELFRelocations(RelaxELFRel);
 
   if (CompressDebugSections != DebugCompressionType::None) {
-    if (!compression::CompressionKind::Zlib) {
+    if (!compression::CompressionSpecRefs::Zlib->Implementation) {
       WithColor::error(errs(), ProgName)
           << "build tools with zlib to enable -compress-debug-sections";
       return 1;
