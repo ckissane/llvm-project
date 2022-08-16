@@ -99,7 +99,8 @@ struct ZlibCompressionAlgorithm : public CompressionImpl {
 
 protected:
   friend CompressionSpecRef getCompressionSpec(uint8_t Kind);
-  ZlibCompressionAlgorithm() : CompressionImpl(CompressionKind::Zlib) {}
+  ZlibCompressionAlgorithm()
+      : CompressionImpl(CompressionKind::Zlib, 1, 6, 9) {}
 };
 
 struct ZStdCompressionAlgorithm : public CompressionImpl {
@@ -153,7 +154,8 @@ struct ZStdCompressionAlgorithm : public CompressionImpl {
 
 protected:
   friend CompressionSpecRef getCompressionSpec(uint8_t Kind);
-  ZStdCompressionAlgorithm() : CompressionImpl(CompressionKind::ZStd) {}
+  ZStdCompressionAlgorithm()
+      : CompressionImpl(CompressionKind::ZStd, 1, 5, 12) {}
 };
 
 CompressionSpecRef getCompressionSpec(uint8_t Kind) {
@@ -165,21 +167,19 @@ CompressionSpecRef getCompressionSpec(uint8_t Kind) {
     static CompressionSpec ZlibD = CompressionSpec(
         CompressionKind::Zlib, &ZlibI, "zlib", bool(LLVM_ENABLE_ZLIB),
         "unsupported: either llvm was compiled without LLVM_ENABLE_ZLIB "
-        "enabled, or could not find zlib at compile time",
-        1, 6, 9);
+        "enabled, or could not find zlib at compile time");
     return &ZlibD;
   case uint8_t(CompressionKind::ZStd):
     static ZStdCompressionAlgorithm ZStdI;
     static CompressionSpec ZStdD = CompressionSpec(
         CompressionKind::ZStd, &ZStdI, "zstd", bool(LLVM_ENABLE_ZSTD),
         "unsupported: either llvm was compiled without LLVM_ENABLE_ZSTD "
-        "enabled, or could not find zstd at compile time",
-        1, 5, 12);
+        "enabled, or could not find zstd at compile time");
     return &ZStdD;
   default:
-    static CompressionSpec UnknownD = CompressionSpec(
-        CompressionKind::Unknown, nullptr, "unknown", false,
-        "unsupported: scheme of unknown kind", -999, -999, -999);
+    static CompressionSpec UnknownD =
+        CompressionSpec(CompressionKind::Unknown, nullptr, "unknown", false,
+                        "unsupported: scheme of unknown kind");
     return &UnknownD;
   }
 }

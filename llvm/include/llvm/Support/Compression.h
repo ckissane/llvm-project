@@ -44,23 +44,20 @@ struct CompressionSpec {
   CompressionImpl *Implementation;
   const StringRef Name;
   const StringRef Status; // either "supported", or "unsupported: REASON"
-  const int BestSpeedLevel;
-  const int DefaultLevel;
-  const int BestSizeLevel;
 
 protected:
   friend CompressionSpecRef getCompressionSpec(uint8_t Kind);
   CompressionSpec(CompressionKind Kind, CompressionImpl *Implementation,
-                  StringRef Name, bool Supported, StringRef Status,
-                  int BestSpeedLevel, int DefaultLevel, int BestSizeLevel)
+                  StringRef Name, bool Supported, StringRef Status)
       : Kind(Kind), Implementation(Supported ? Implementation : nullptr),
-        Name(Name), Status(Supported ? "supported" : Status),
-        BestSpeedLevel(BestSpeedLevel), DefaultLevel(DefaultLevel),
-        BestSizeLevel(BestSizeLevel) {}
+        Name(Name), Status(Supported ? "supported" : Status) {}
 };
 
 struct CompressionImpl {
   const CompressionKind Kind;
+  const int BestSpeedLevel;
+  const int DefaultLevel;
+  const int BestSizeLevel;
   virtual void compress(ArrayRef<uint8_t> Input,
                         SmallVectorImpl<uint8_t> &CompressedBuffer,
                         int Level) = 0;
@@ -68,8 +65,7 @@ struct CompressionImpl {
                            size_t &UncompressedSize) = 0;
   void compress(ArrayRef<uint8_t> Input,
                 SmallVectorImpl<uint8_t> &CompressedBuffer) {
-    return compress(Input, CompressedBuffer,
-                    getCompressionSpec(uint8_t(this->Kind))->DefaultLevel);
+    return compress(Input, CompressedBuffer, DefaultLevel);
   }
 
   Error decompress(ArrayRef<uint8_t> Input,
@@ -85,7 +81,10 @@ struct CompressionImpl {
   CompressionSpecRef spec() { return getCompressionSpec(Kind); }
 
 protected:
-  CompressionImpl(CompressionKind Kind) : Kind(Kind) {}
+  CompressionImpl(CompressionKind Kind, int BestSpeedLevel, int DefaultLevel,
+                  int BestSizeLevel)
+      : Kind(Kind), BestSpeedLevel(BestSpeedLevel), DefaultLevel(DefaultLevel),
+        BestSizeLevel(BestSizeLevel) {}
 };
 
 class CompressionSpecRefs {

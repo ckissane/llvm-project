@@ -470,7 +470,7 @@ Error collectPGOFuncNameStrings(ArrayRef<std::string> NameStrs,
   SmallVector<uint8_t, 128> CompressedNameStrings;
   CompressionImplementation->compress(
       arrayRefFromStringRef(UncompressedNameStrings), CompressedNameStrings,
-      OptionalCompressionScheme->BestSizeLevel);
+      CompressionImplementation->BestSizeLevel);
 
   return WriteStringToResult(CompressedNameStrings.size(),
                              toStringRef(CompressedNameStrings));

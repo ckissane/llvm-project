@@ -53,11 +53,15 @@ static void testZlibCompression(StringRef Input, int Level) {
 
 TEST(CompressionTest, Zlib) {
   CompressionSpecRef CompressionScheme = CompressionSpecRefs::Zlib;
-  testZlibCompression("", CompressionScheme->DefaultLevel);
+  CompressionImplRef CompressionImplementation =
+      CompressionScheme->Implementation;
+  testZlibCompression("", CompressionImplementation->DefaultLevel);
 
-  testZlibCompression("hello, world!", CompressionScheme->BestSizeLevel);
-  testZlibCompression("hello, world!", CompressionScheme->BestSpeedLevel);
-  testZlibCompression("hello, world!", CompressionScheme->DefaultLevel);
+  testZlibCompression("hello, world!",
+                      CompressionImplementation->BestSizeLevel);
+  testZlibCompression("hello, world!",
+                      CompressionImplementation->BestSpeedLevel);
+  testZlibCompression("hello, world!", CompressionImplementation->DefaultLevel);
 
   const size_t kSize = 1024;
   char BinaryData[kSize];
@@ -65,9 +69,9 @@ TEST(CompressionTest, Zlib) {
     BinaryData[i] = i & 255;
   StringRef BinaryDataStr(BinaryData, kSize);
 
-  testZlibCompression(BinaryDataStr, CompressionScheme->BestSizeLevel);
-  testZlibCompression(BinaryDataStr, CompressionScheme->BestSpeedLevel);
-  testZlibCompression(BinaryDataStr, CompressionScheme->DefaultLevel);
+  testZlibCompression(BinaryDataStr, CompressionImplementation->BestSizeLevel);
+  testZlibCompression(BinaryDataStr, CompressionImplementation->BestSpeedLevel);
+  testZlibCompression(BinaryDataStr, CompressionImplementation->DefaultLevel);
 }
 #endif
 
@@ -80,11 +84,15 @@ static void testZStdCompression(StringRef Input, int Level) {
 
 TEST(CompressionTest, Zstd) {
   CompressionSpecRef CompressionScheme = CompressionSpecRefs::ZStd;
-  testZStdCompression("", CompressionScheme->DefaultLevel);
+  CompressionImplRef CompressionImplementation =
+      CompressionScheme->Implementation;
+  testZStdCompression("", CompressionImplementation->DefaultLevel);
 
-  testZStdCompression("hello, world!", CompressionScheme->BestSizeLevel);
-  testZStdCompression("hello, world!", CompressionScheme->BestSpeedLevel);
-  testZStdCompression("hello, world!", CompressionScheme->DefaultLevel);
+  testZStdCompression("hello, world!",
+                      CompressionImplementation->BestSizeLevel);
+  testZStdCompression("hello, world!",
+                      CompressionImplementation->BestSpeedLevel);
+  testZStdCompression("hello, world!", CompressionImplementation->DefaultLevel);
 
   const size_t kSize = 1024;
   char BinaryData[kSize];
@@ -92,9 +100,9 @@ TEST(CompressionTest, Zstd) {
     BinaryData[i] = i & 255;
   StringRef BinaryDataStr(BinaryData, kSize);
 
-  testZStdCompression(BinaryDataStr, CompressionScheme->BestSizeLevel);
-  testZStdCompression(BinaryDataStr, CompressionScheme->BestSpeedLevel);
-  testZStdCompression(BinaryDataStr, CompressionScheme->DefaultLevel);
+  testZStdCompression(BinaryDataStr, CompressionImplementation->BestSizeLevel);
+  testZStdCompression(BinaryDataStr, CompressionImplementation->BestSpeedLevel);
+  testZStdCompression(BinaryDataStr, CompressionImplementation->DefaultLevel);
 }
 #endif
 }

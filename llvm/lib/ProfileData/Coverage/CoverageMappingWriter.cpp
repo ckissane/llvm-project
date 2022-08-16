@@ -55,7 +55,7 @@ void CoverageFilenamesSectionWriter::write(raw_ostream &OS, bool Compress) {
   if (DoCompression) {
     CompressionScheme->Implementation->compress(
         arrayRefFromStringRef(FilenamesStr), CompressedStr,
-        CompressionScheme->BestSizeLevel);
+        CompressionScheme->Implementation->BestSizeLevel);
   }
 
   // ::= <num-filenames>
