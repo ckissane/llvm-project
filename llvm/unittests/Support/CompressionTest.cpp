@@ -78,14 +78,13 @@ TEST(CompressionTest, Zlib) {
 #endif
 
 #if LLVM_ENABLE_ZSTD
-
 static void testZStdCompression(StringRef Input, int Level) {
   testCompressionAlgorithm(Input, Level,
                            getCompressionSpec(CompressionKind::ZStd),
                            "Destination buffer is too small");
 }
 
-TEST(CompressionTest, Zstd) {
+TEST(CompressionTest, ZStd) {
   CompressionSpec *CompressionScheme =
       getCompressionSpec(CompressionKind::ZStd);
   CompressionImpl *CompressionImplementation =
@@ -109,4 +108,4 @@ TEST(CompressionTest, Zstd) {
   testZStdCompression(BinaryDataStr, CompressionImplementation->DefaultLevel);
 }
 #endif
-}
+} // namespace
