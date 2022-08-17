@@ -120,7 +120,7 @@ Error RawCoverageFilenamesReader::read(CovMapVersion Version) {
     return Err;
 
   if (CompressedLen > 0) {
-    if (CompressionImplRef CompressionImplementation =
+    if (CompressionImpl *CompressionImplementation =
             getCompressionSpec(CompressionKind::Zlib)->Implementation) {
 
       // Allocate memory for the decompressed filenames.

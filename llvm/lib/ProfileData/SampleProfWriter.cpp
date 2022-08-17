@@ -80,9 +80,9 @@ SampleProfileWriterExtBinaryBase::markSectionStart(SecType Type,
 
 std::error_code SampleProfileWriterExtBinaryBase::compressAndOutput() {
 
-  if (CompressionSpecRef CompressionScheme =
+  if (CompressionSpec *CompressionScheme =
           getCompressionSpec(CompressionKind::Zlib)) {
-    if (CompressionImplRef CompressionImplementation =
+    if (CompressionImpl *CompressionImplementation =
             CompressionScheme->Implementation) {
       std::string &UncompressedStrings =
           static_cast<raw_string_ostream *>(LocalBufStream.get())->str();

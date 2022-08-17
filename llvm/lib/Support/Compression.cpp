@@ -98,7 +98,7 @@ struct ZlibCompressionAlgorithm : public CompressionImpl {
 #endif
 
 protected:
-  friend CompressionSpecRef getCompressionSpec(uint8_t Kind);
+  friend CompressionSpec *getCompressionSpec(uint8_t Kind);
   ZlibCompressionAlgorithm()
       : CompressionImpl(CompressionKind::Zlib, 1, 6, 9) {}
 };
@@ -153,12 +153,12 @@ struct ZStdCompressionAlgorithm : public CompressionImpl {
 #endif
 
 protected:
-  friend CompressionSpecRef getCompressionSpec(uint8_t Kind);
+  friend CompressionSpec *getCompressionSpec(uint8_t Kind);
   ZStdCompressionAlgorithm()
       : CompressionImpl(CompressionKind::ZStd, 1, 5, 12) {}
 };
 
-CompressionSpecRef getCompressionSpec(uint8_t Kind) {
+CompressionSpec *getCompressionSpec(uint8_t Kind) {
   switch (Kind) {
   case uint8_t(0):
     return nullptr;
@@ -184,7 +184,7 @@ CompressionSpecRef getCompressionSpec(uint8_t Kind) {
   }
 }
 
-CompressionSpecRef getCompressionSpec(CompressionKind Kind) {
+CompressionSpec *getCompressionSpec(CompressionKind Kind) {
   return getCompressionSpec(uint8_t(Kind));
 }
 

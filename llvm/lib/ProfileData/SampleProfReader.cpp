@@ -878,7 +878,7 @@ std::error_code SampleProfileReaderExtBinaryBase::decompressSection(
   if (std::error_code EC = CompressSize.getError())
     return EC;
 
-  if (CompressionImplRef CompressionImplementation =
+  if (CompressionImpl *CompressionImplementation =
           getCompressionSpec(CompressionKind::Zlib)->Implementation) {
 
     uint8_t *Buffer = Allocator.Allocate<uint8_t>(DecompressBufSize);

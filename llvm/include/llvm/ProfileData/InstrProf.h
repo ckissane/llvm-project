@@ -217,7 +217,7 @@ StringRef getFuncNameWithoutPrefix(StringRef PGOFuncName,
 /// second field will have value zero.
 Error collectPGOFuncNameStrings(
     ArrayRef<std::string> NameStrs,
-    compression::CompressionSpecRef OptionalCompressionScheme,
+    compression::CompressionSpec *OptionalCompressionScheme,
     std::string &Result);
 
 /// Produce \c Result string with the same format described above. The input

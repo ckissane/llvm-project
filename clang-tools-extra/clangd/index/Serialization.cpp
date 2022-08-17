@@ -192,7 +192,7 @@ public:
       RawTable.append(std::string(S));
       RawTable.push_back(0);
     }
-    if (CompressionImplRef CompressionImplementation =
+    if (CompressionImpl *CompressionImplementation =
             getCompressionSpec(CompressionKind::Zlib)->Implementation) {
       llvm::SmallVector<uint8_t, 0> Compressed;
       CompressionImplementation->compress(llvm::arrayRefFromStringRef(RawTable),
@@ -230,7 +230,7 @@ llvm::Expected<StringTableIn> readStringTable(llvm::StringRef Data) {
   else {
     // Don't extratc to a CompressionKind CompressionScheme variable
     // as ratio check is zlib specific
-    if (CompressionImplRef CompressionImplementation =
+    if (CompressionImpl *CompressionImplementation =
             getCompressionSpec(CompressionKind::Zlib)->Implementation) {
       // Don't allocate a massive buffer if UncompressedSize was corrupted
       // This is effective for sharded index, but not big monolithic ones, as

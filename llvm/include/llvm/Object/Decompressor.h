@@ -49,7 +49,7 @@ private:
 
   StringRef SectionData;
   uint64_t DecompressedSize;
-  compression::CompressionSpecRef CompressionScheme = nullptr;
+  compression::CompressionSpec *CompressionScheme = nullptr;
 };
 
 } // end namespace object

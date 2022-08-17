@@ -437,7 +437,7 @@ uint64_t InstrProfSymtab::getFunctionHashFromAddress(uint64_t Address) {
 }
 
 Error collectPGOFuncNameStrings(ArrayRef<std::string> NameStrs,
-                                CompressionSpecRef OptionalCompressionScheme,
+                                CompressionSpec *OptionalCompressionScheme,
                                 std::string &Result) {
   assert(!NameStrs.empty() && "No name data to emit");
 
@@ -465,7 +465,7 @@ Error collectPGOFuncNameStrings(ArrayRef<std::string> NameStrs,
   if ((!OptionalCompressionScheme) ||
       (!(OptionalCompressionScheme->Implementation)))
     return WriteStringToResult(0, UncompressedNameStrings);
-  CompressionImplRef CompressionImplementation =
+  CompressionImpl *CompressionImplementation =
       OptionalCompressionScheme->Implementation;
   SmallVector<uint8_t, 128> CompressedNameStrings;
   CompressionImplementation->compress(
@@ -489,7 +489,7 @@ Error collectPGOFuncNameStrings(ArrayRef<GlobalVariable *> NameVars,
   for (auto *NameVar : NameVars) {
     NameStrs.push_back(std::string(getPGOFuncNameVarInitializer(NameVar)));
   }
-  CompressionSpecRef OptionalCompressionScheme =
+  CompressionSpec *OptionalCompressionScheme =
       getCompressionSpec(CompressionKind::Zlib);
   return collectPGOFuncNameStrings(
       NameStrs, doCompression ? OptionalCompressionScheme : nullptr, Result);
@@ -508,9 +508,9 @@ Error readPGOFuncNameStrings(StringRef NameStrings, InstrProfSymtab &Symtab) {
     SmallVector<uint8_t, 128> UncompressedNameStrings;
     StringRef NameStrings;
     if (isCompressed) {
-      CompressionSpecRef CompressionScheme =
+      CompressionSpec *CompressionScheme =
           getCompressionSpec(CompressionKind::Zlib);
-      if (CompressionImplRef CompressionImplementation =
+      if (CompressionImpl *CompressionImplementation =
               CompressionScheme->Implementation) {
 
         if (Error E = CompressionImplementation->decompress(

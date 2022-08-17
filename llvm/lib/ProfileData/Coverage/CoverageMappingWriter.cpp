@@ -48,7 +48,7 @@ void CoverageFilenamesSectionWriter::write(raw_ostream &OS, bool Compress) {
   }
 
   SmallVector<uint8_t, 128> CompressedStr;
-  CompressionSpecRef CompressionScheme =
+  CompressionSpec *CompressionScheme =
       getCompressionSpec(CompressionKind::Zlib);
   bool DoCompression = Compress && DoInstrProfNameCompression &&
                        (CompressionScheme && CompressionScheme->Implementation);

@@ -31,11 +31,8 @@ enum class CompressionKind : uint8_t { Zlib = 1, ZStd = 2, Unknown = 255 };
 struct CompressionSpec;
 struct CompressionImpl;
 
-typedef CompressionSpec *CompressionSpecRef;
-typedef CompressionImpl *CompressionImplRef;
-
-CompressionSpecRef getCompressionSpec(uint8_t Kind);
-CompressionSpecRef getCompressionSpec(CompressionKind Kind);
+CompressionSpec *getCompressionSpec(uint8_t Kind);
+CompressionSpec *getCompressionSpec(CompressionKind Kind);
 
 struct CompressionSpec {
   const CompressionKind Kind;
@@ -44,7 +41,7 @@ struct CompressionSpec {
   const StringRef Status; // either "supported", or "unsupported: REASON"
 
 protected:
-  friend CompressionSpecRef getCompressionSpec(uint8_t Kind);
+  friend CompressionSpec *getCompressionSpec(uint8_t Kind);
   CompressionSpec(CompressionKind Kind, CompressionImpl *Implementation,
                   StringRef Name, bool Supported, StringRef Status)
       : Kind(Kind), Implementation(Supported ? Implementation : nullptr),
@@ -75,8 +72,6 @@ struct CompressionImpl {
       UncompressedBuffer.truncate(UncompressedSize);
     return E;
   }
-
-  CompressionSpecRef spec() { return getCompressionSpec(Kind); }
 
 protected:
   CompressionImpl(CompressionKind Kind, int BestSpeedLevel, int DefaultLevel,
