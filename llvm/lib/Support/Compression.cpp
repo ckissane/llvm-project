@@ -188,10 +188,5 @@ CompressionSpecRef getCompressionSpec(CompressionKind Kind) {
   return getCompressionSpec(uint8_t(Kind));
 }
 
-CompressionSpecRef CompressionSpecRefs::Zlib =
-    getCompressionSpec(CompressionKind::Zlib); ///< zlib style complession
-CompressionSpecRef CompressionSpecRefs::ZStd =
-    getCompressionSpec(CompressionKind::ZStd); ///< zstd style complession
-
 } // namespace compression
 } // namespace llvm

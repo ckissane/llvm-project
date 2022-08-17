@@ -1150,9 +1150,10 @@ TEST_P(MaybeSparseInstrProfTest, instr_prof_symtab_compression_test) {
     EXPECT_THAT_ERROR(
         collectPGOFuncNameStrings(
             FuncNames1,
-            DoCompression && (CompressionSpecRefs::Zlib &&
-                              CompressionSpecRefs::Zlib->Implementation)
-                ? CompressionSpecRefs::Zlib
+            DoCompression &&
+                    (getCompressionSpec(CompressionKind::Zlib) &&
+                     getCompressionSpec(CompressionKind::Zlib)->Implementation)
+                ? getCompressionSpec(CompressionKind::Zlib)
                 : nullptr,
             FuncNameStrings1),
         Succeeded());
@@ -1162,9 +1163,10 @@ TEST_P(MaybeSparseInstrProfTest, instr_prof_symtab_compression_test) {
     EXPECT_THAT_ERROR(
         collectPGOFuncNameStrings(
             FuncNames2,
-            DoCompression && (CompressionSpecRefs::Zlib &&
-                              CompressionSpecRefs::Zlib->Implementation)
-                ? CompressionSpecRefs::Zlib
+            DoCompression &&
+                    (getCompressionSpec(CompressionKind::Zlib) &&
+                     getCompressionSpec(CompressionKind::Zlib)->Implementation)
+                ? getCompressionSpec(CompressionKind::Zlib)
                 : nullptr,
             FuncNameStrings2),
         Succeeded());

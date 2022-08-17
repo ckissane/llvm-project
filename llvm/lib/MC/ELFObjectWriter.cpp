@@ -59,6 +59,7 @@
 #include <vector>
 
 using namespace llvm;
+using namespace llvm::compression;
 
 #undef  DEBUG_TYPE
 #define DEBUG_TYPE "reloc-info"
@@ -864,8 +865,8 @@ void ELFWriter::writeSectionData(const MCAssembler &Asm, MCSection &Sec,
   SmallVector<uint8_t, 128> Compressed;
   const uint32_t ChType = ELF::ELFCOMPRESS_ZLIB;
 
-  if (compression::CompressionImplRef CompressionImplementation =
-          compression::CompressionSpecRefs::Zlib->Implementation) {
+  if (CompressionImplRef CompressionImplementation =
+          getCompressionSpec(CompressionKind::Zlib)->Implementation) {
     CompressionImplementation->compress(
         makeArrayRef(reinterpret_cast<uint8_t *>(UncompressedData.data()),
                      UncompressedData.size()),

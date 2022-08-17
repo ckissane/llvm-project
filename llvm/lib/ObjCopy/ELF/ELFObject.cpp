@@ -31,6 +31,7 @@
 
 using namespace llvm;
 using namespace llvm::ELF;
+using namespace llvm::compression;
 using namespace llvm::objcopy::elf;
 using namespace llvm::object;
 
@@ -448,9 +449,9 @@ Error ELFSectionWriter<ELFT>::visit(const DecompressedSection &Sec) {
   switch (CompressionType) {
   case DebugCompressionType::Z:
     if (Error Err1 =
-            compression::CompressionSpecRefs::Zlib->Implementation->decompress(
-                Compressed, DecompressedContent,
-                static_cast<size_t>(Sec.Size))) {
+            getCompressionSpec(CompressionKind::Zlib)
+                ->Implementation->decompress(Compressed, DecompressedContent,
+                                             static_cast<size_t>(Sec.Size))) {
       return createStringError(errc::invalid_argument,
                                "'" + Sec.Name +
                                    "': " + toString(std::move(Err1)));
@@ -531,8 +532,8 @@ CompressedSection::CompressedSection(const SectionBase &Sec,
       DecompressedSize(Sec.OriginalData.size()), DecompressedAlign(Sec.Align) {
   switch (CompressionType) {
   case DebugCompressionType::Z:
-    compression::CompressionSpecRefs::Zlib->Implementation->compress(
-        OriginalData, CompressedData);
+    getCompressionSpec(CompressionKind::Zlib)
+        ->Implementation->compress(OriginalData, CompressedData);
     break;
   case DebugCompressionType::None:
     break;

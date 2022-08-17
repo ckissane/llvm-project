@@ -47,12 +47,14 @@ static void testCompressionAlgorithm(
 
 #if LLVM_ENABLE_ZLIB
 static void testZlibCompression(StringRef Input, int Level) {
-  testCompressionAlgorithm(Input, Level, CompressionSpecRefs::Zlib,
+  testCompressionAlgorithm(Input, Level,
+                           getCompressionSpec(CompressionKind::Zlib),
                            "zlib error: Z_BUF_ERROR");
 }
 
 TEST(CompressionTest, Zlib) {
-  CompressionSpecRef CompressionScheme = CompressionSpecRefs::Zlib;
+  CompressionSpecRef CompressionScheme =
+      getCompressionSpec(CompressionKind::Zlib);
   CompressionImplRef CompressionImplementation =
       CompressionScheme->Implementation;
   testZlibCompression("", CompressionImplementation->DefaultLevel);
@@ -78,12 +80,14 @@ TEST(CompressionTest, Zlib) {
 #if LLVM_ENABLE_ZSTD
 
 static void testZStdCompression(StringRef Input, int Level) {
-  testCompressionAlgorithm(Input, Level, CompressionSpecRefs::ZStd,
+  testCompressionAlgorithm(Input, Level,
+                           getCompressionSpec(CompressionKind::ZStd),
                            "Destination buffer is too small");
 }
 
 TEST(CompressionTest, Zstd) {
-  CompressionSpecRef CompressionScheme = CompressionSpecRefs::ZStd;
+  CompressionSpecRef CompressionScheme =
+      getCompressionSpec(CompressionKind::ZStd);
   CompressionImplRef CompressionImplementation =
       CompressionScheme->Implementation;
   testZStdCompression("", CompressionImplementation->DefaultLevel);

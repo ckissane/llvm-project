@@ -38,6 +38,7 @@
 #include <vector>
 
 using namespace llvm;
+using namespace llvm::compression;
 using namespace sampleprof;
 
 std::error_code
@@ -79,9 +80,9 @@ SampleProfileWriterExtBinaryBase::markSectionStart(SecType Type,
 
 std::error_code SampleProfileWriterExtBinaryBase::compressAndOutput() {
 
-  if (compression::CompressionSpecRef CompressionScheme =
-          compression::CompressionSpecRefs::Zlib) {
-    if (compression::CompressionImplRef CompressionImplementation =
+  if (CompressionSpecRef CompressionScheme =
+          getCompressionSpec(CompressionKind::Zlib)) {
+    if (CompressionImplRef CompressionImplementation =
             CompressionScheme->Implementation) {
       std::string &UncompressedStrings =
           static_cast<raw_string_ostream *>(LocalBufStream.get())->str();

@@ -879,7 +879,7 @@ std::error_code SampleProfileReaderExtBinaryBase::decompressSection(
     return EC;
 
   if (CompressionImplRef CompressionImplementation =
-          CompressionSpecRefs::Zlib->Implementation) {
+          getCompressionSpec(CompressionKind::Zlib)->Implementation) {
 
     uint8_t *Buffer = Allocator.Allocate<uint8_t>(DecompressBufSize);
     size_t UCSize = DecompressBufSize;

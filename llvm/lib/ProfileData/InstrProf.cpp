@@ -489,7 +489,8 @@ Error collectPGOFuncNameStrings(ArrayRef<GlobalVariable *> NameVars,
   for (auto *NameVar : NameVars) {
     NameStrs.push_back(std::string(getPGOFuncNameVarInitializer(NameVar)));
   }
-  CompressionSpecRef OptionalCompressionScheme = CompressionSpecRefs::Zlib;
+  CompressionSpecRef OptionalCompressionScheme =
+      getCompressionSpec(CompressionKind::Zlib);
   return collectPGOFuncNameStrings(
       NameStrs, doCompression ? OptionalCompressionScheme : nullptr, Result);
 }
@@ -507,7 +508,8 @@ Error readPGOFuncNameStrings(StringRef NameStrings, InstrProfSymtab &Symtab) {
     SmallVector<uint8_t, 128> UncompressedNameStrings;
     StringRef NameStrings;
     if (isCompressed) {
-      CompressionSpecRef CompressionScheme = CompressionSpecRefs::Zlib;
+      CompressionSpecRef CompressionScheme =
+          getCompressionSpec(CompressionKind::Zlib);
       if (CompressionImplRef CompressionImplementation =
               CompressionScheme->Implementation) {
 

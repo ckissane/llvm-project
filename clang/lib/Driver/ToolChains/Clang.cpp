@@ -58,6 +58,7 @@ using namespace clang::driver;
 using namespace clang::driver::tools;
 using namespace clang;
 using namespace llvm::opt;
+using namespace llvm::compression;
 
 static void CheckPreprocessingOptions(const Driver &D, const ArgList &Args) {
   if (Arg *A = Args.getLastArg(clang::driver::options::OPT_C, options::OPT_CC,
@@ -1139,7 +1140,7 @@ static void RenderDebugInfoCompressionArgs(const ArgList &Args,
     if (Value == "none") {
       CmdArgs.push_back("--compress-debug-sections=none");
     } else if (Value == "zlib") {
-      if (llvm::compression::CompressionSpecRefs::Zlib->Implementation) {
+      if (getCompressionSpec(CompressionKind::Zlib)->Implementation) {
         CmdArgs.push_back(
             Args.MakeArgString("--compress-debug-sections=" + Twine(Value)));
       } else {

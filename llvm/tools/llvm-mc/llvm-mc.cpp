@@ -40,6 +40,7 @@
 #include "llvm/Support/WithColor.h"
 
 using namespace llvm;
+using namespace llvm::compression;
 
 static mc::RegisterMCTargetOptionsFlags MOF;
 
@@ -401,7 +402,7 @@ int main(int argc, char **argv) {
   MAI->setRelaxELFRelocations(RelaxELFRel);
 
   if (CompressDebugSections != DebugCompressionType::None) {
-    if (!compression::CompressionSpecRefs::Zlib->Implementation) {
+    if (!getCompressionSpec(CompressionKind::Zlib)->Implementation) {
       WithColor::error(errs(), ProgName)
           << "build tools with zlib to enable -compress-debug-sections";
       return 1;

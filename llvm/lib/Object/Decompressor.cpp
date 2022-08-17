@@ -14,6 +14,7 @@
 #include "llvm/Support/Endian.h"
 
 using namespace llvm;
+using namespace llvm::compression;
 using namespace llvm::support::endian;
 using namespace object;
 
@@ -41,7 +42,7 @@ Error Decompressor::consumeCompressedSectionHeader(bool Is64Bit,
   uint64_t ELFCompressionSchemeId = Extractor.getUnsigned(
       &Offset, Is64Bit ? sizeof(Elf64_Word) : sizeof(Elf32_Word));
   if (ELFCompressionSchemeId == ELFCOMPRESS_ZLIB)
-    CompressionScheme = compression::CompressionSpecRefs::Zlib;
+    CompressionScheme = getCompressionSpec(CompressionKind::Zlib);
 
   if (!CompressionScheme)
     return createError("unsupported compression type");

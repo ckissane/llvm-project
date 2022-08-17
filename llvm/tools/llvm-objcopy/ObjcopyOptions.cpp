@@ -25,6 +25,7 @@
 #include "llvm/Support/MemoryBuffer.h"
 
 using namespace llvm;
+using namespace llvm::compression;
 using namespace llvm::objcopy;
 
 namespace {
@@ -730,7 +731,7 @@ objcopy::parseObjcopyOptions(ArrayRef<const char *> RawArgsArr,
           "invalid or unsupported --compress-debug-sections format: %s",
           A->getValue());
     case DebugCompressionType::Z:
-      if (!compression::CompressionSpecRefs::Zlib->Implementation)
+      if (!getCompressionSpec(CompressionKind::Zlib)->Implementation)
         return createStringError(
             errc::invalid_argument,
             "LLVM was not compiled with LLVM_ENABLE_ZLIB: can not compress");
@@ -998,7 +999,7 @@ objcopy::parseObjcopyOptions(ArrayRef<const char *> RawArgsArr,
   }
 
   if (Config.DecompressDebugSections &&
-      !compression::CompressionSpecRefs::Zlib->Implementation)
+      !getCompressionSpec(CompressionKind::Zlib)->Implementation)
     return createStringError(
         errc::invalid_argument,
         "LLVM was not compiled with LLVM_ENABLE_ZLIB: cannot decompress");

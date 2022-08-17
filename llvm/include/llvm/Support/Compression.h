@@ -85,12 +85,6 @@ protected:
         BestSizeLevel(BestSizeLevel) {}
 };
 
-class CompressionSpecRefs {
-public:
-  static CompressionSpecRef Zlib;
-  static CompressionSpecRef ZStd;
-};
-
 } // End of namespace compression
 
 } // End of namespace llvm

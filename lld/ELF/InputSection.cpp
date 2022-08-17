@@ -120,8 +120,9 @@ void InputSectionBase::uncompress() const {
     uncompressedBuf = bAlloc().Allocate<uint8_t>(size);
   }
 
-  if (Error e = CompressionSpecRefs::Zlib->Implementation->decompress(
-          rawData, uncompressedBuf, size))
+  if (Error e =
+          getCompressionSpec(CompressionKind::Zlib)
+              ->Implementation->decompress(rawData, uncompressedBuf, size))
     fatal(toString(this) +
           ": uncompress failed: " + llvm::toString(std::move(e)));
   rawData = makeArrayRef(uncompressedBuf, size);
@@ -211,7 +212,7 @@ template <typename ELFT> void InputSectionBase::parseCompressedHeader() {
 
   auto *hdr = reinterpret_cast<const typename ELFT::Chdr *>(rawData.data());
   if (hdr->ch_type == ELFCOMPRESS_ZLIB) {
-    if (!CompressionSpecRefs::Zlib->Implementation)
+    if (!getCompressionSpec(CompressionKind::Zlib)->Implementation)
       error(toString(this) + " is compressed with ELFCOMPRESS_ZLIB, but lld is "
                              "not built with zlib support");
   } else {
@@ -1222,8 +1223,8 @@ template <class ELFT> void InputSection::writeTo(uint8_t *buf) {
   // to the buffer.
   if (uncompressedSize >= 0) {
     size_t size = uncompressedSize;
-    if (Error e = CompressionSpecRefs::Zlib->Implementation->decompress(
-            rawData, buf, size))
+    if (Error e = getCompressionSpec(CompressionKind::Zlib)
+                      ->Implementation->decompress(rawData, buf, size))
       fatal(toString(this) +
             ": uncompress failed: " + llvm::toString(std::move(e)));
     uint8_t *bufEnd = buf + size;
