@@ -48,14 +48,13 @@ void CoverageFilenamesSectionWriter::write(raw_ostream &OS, bool Compress) {
   }
 
   SmallVector<uint8_t, 128> CompressedStr;
-  CompressionSpec *CompressionScheme =
-      getCompressionSpec(CompressionKind::Zlib);
+  CompressionSpec *CSpec = getCompressionSpec(CompressionKind::Zlib);
   bool DoCompression = Compress && DoInstrProfNameCompression &&
-                       (CompressionScheme && CompressionScheme->Implementation);
+                       (CSpec && CSpec->Implementation);
   if (DoCompression) {
-    CompressionScheme->Implementation->compress(
-        arrayRefFromStringRef(FilenamesStr), CompressedStr,
-        CompressionScheme->Implementation->BestSizeLevel);
+    CSpec->Implementation->compress(arrayRefFromStringRef(FilenamesStr),
+                                    CompressedStr,
+                                    CSpec->Implementation->BestSizeLevel);
   }
 
   // ::= <num-filenames>

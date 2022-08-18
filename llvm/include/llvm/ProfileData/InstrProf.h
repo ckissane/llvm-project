@@ -215,10 +215,9 @@ StringRef getFuncNameWithoutPrefix(StringRef PGOFuncName,
 ///  third field is the uncompressed strings; otherwise it is the
 /// compressed string. When the string compression is off, the
 /// second field will have value zero.
-Error collectPGOFuncNameStrings(
-    ArrayRef<std::string> NameStrs,
-    compression::CompressionSpec *OptionalCompressionScheme,
-    std::string &Result);
+Error collectPGOFuncNameStrings(ArrayRef<std::string> NameStrs,
+                                compression::CompressionSpec *CSpec,
+                                std::string &Result);
 
 /// Produce \c Result string with the same format described above. The input
 /// is vector of PGO function name variables that are referenced.

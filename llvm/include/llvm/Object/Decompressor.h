@@ -51,7 +51,7 @@ private:
 
   StringRef SectionData;
   uint64_t DecompressedSize;
-  CompressionImpl *CompressionImplementation = nullptr;
+  CompressionImpl *CImpl = nullptr;
 };
 
 } // end namespace object

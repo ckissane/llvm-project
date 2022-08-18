@@ -1463,14 +1463,12 @@ bool ASTReader::ReadSLocEntry(int ID) {
     unsigned RecCode = MaybeRecCode.get();
 
     if (RecCode == SM_SLOC_BUFFER_BLOB_COMPRESSED) {
-      CompressionSpec *CompressionScheme =
-          getCompressionSpec(CompressionKind::Zlib);
+      CompressionSpec *CSpec = getCompressionSpec(CompressionKind::Zlib);
 
-      if (CompressionImpl *CompressionImplementation =
-              CompressionScheme->Implementation) {
+      if (CompressionImpl *CImpl = CSpec->Implementation) {
         SmallVector<uint8_t, 0> Uncompressed;
-        if (llvm::Error E = CompressionImplementation->decompress(
-                llvm::arrayRefFromStringRef(Blob), Uncompressed, Record[0])) {
+        if (llvm::Error E = CImpl->decompress(llvm::arrayRefFromStringRef(Blob),
+                                              Uncompressed, Record[0])) {
           Error("could not decompress embedded file contents: " +
                 llvm::toString(std::move(E)));
           return nullptr;
@@ -1478,8 +1476,7 @@ bool ASTReader::ReadSLocEntry(int ID) {
         return llvm::MemoryBuffer::getMemBufferCopy(
             llvm::toStringRef(Uncompressed), Name);
       } else {
-        Error("compression class " +
-              (CompressionScheme->Name + " is not available").str());
+        Error("compression class " + (CSpec->Name + " is not available").str());
         return nullptr;
       }
     } else if (RecCode == SM_SLOC_BUFFER_BLOB) {

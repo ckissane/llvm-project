@@ -184,9 +184,5 @@ CompressionSpec *getCompressionSpec(uint8_t Kind) {
   }
 }
 
-CompressionSpec *getCompressionSpec(CompressionKind Kind) {
-  return getCompressionSpec(uint8_t(Kind));
-}
-
 } // namespace compression
 } // namespace llvm

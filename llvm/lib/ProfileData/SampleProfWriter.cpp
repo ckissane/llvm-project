@@ -80,19 +80,16 @@ SampleProfileWriterExtBinaryBase::markSectionStart(SecType Type,
 
 std::error_code SampleProfileWriterExtBinaryBase::compressAndOutput() {
 
-  if (CompressionSpec *CompressionScheme =
-          getCompressionSpec(CompressionKind::Zlib)) {
-    if (CompressionImpl *CompressionImplementation =
-            CompressionScheme->Implementation) {
+  if (CompressionSpec *CSpec = getCompressionSpec(CompressionKind::Zlib)) {
+    if (CompressionImpl *CImpl = CSpec->Implementation) {
       std::string &UncompressedStrings =
           static_cast<raw_string_ostream *>(LocalBufStream.get())->str();
       if (UncompressedStrings.size() == 0)
         return sampleprof_error::success;
       auto &OS = *OutputStream;
       SmallVector<uint8_t, 128> CompressedStrings;
-      CompressionImplementation->compress(
-          arrayRefFromStringRef(UncompressedStrings), CompressedStrings,
-          CompressionImplementation->BestSizeLevel);
+      CImpl->compress(arrayRefFromStringRef(UncompressedStrings),
+                      CompressedStrings, CImpl->BestSizeLevel);
       encodeULEB128(UncompressedStrings.size(), OS);
       encodeULEB128(CompressedStrings.size(), OS);
       OS << toStringRef(CompressedStrings);

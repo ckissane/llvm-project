@@ -2000,12 +2000,12 @@ static void emitBlob(llvm::BitstreamWriter &Stream, StringRef Blob,
 
   // Compress the buffer if possible. We expect that almost all PCM
   // consumers will not want its contents.
-  if (CompressionImpl *CompressionImplementation =
+  if (CompressionImpl *CImpl =
           getCompressionSpec(CompressionKind::Zlib)->Implementation) {
     SmallVector<uint8_t, 0> CompressedBuffer;
 
-    CompressionImplementation->compress(
-        llvm::arrayRefFromStringRef(Blob.drop_back(1)), CompressedBuffer);
+    CImpl->compress(llvm::arrayRefFromStringRef(Blob.drop_back(1)),
+                    CompressedBuffer);
     RecordDataType Record[] = {SM_SLOC_BUFFER_BLOB_COMPRESSED, Blob.size() - 1};
     Stream.EmitRecordWithBlob(SLocBufferBlobCompressedAbbrv, Record,
                               llvm::toStringRef(CompressedBuffer));

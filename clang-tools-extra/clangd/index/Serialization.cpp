@@ -192,11 +192,10 @@ public:
       RawTable.append(std::string(S));
       RawTable.push_back(0);
     }
-    if (CompressionImpl *CompressionImplementation =
+    if (CompressionImpl *CImpl =
             getCompressionSpec(CompressionKind::Zlib)->Implementation) {
       llvm::SmallVector<uint8_t, 0> Compressed;
-      CompressionImplementation->compress(llvm::arrayRefFromStringRef(RawTable),
-                                          Compressed);
+      CImpl->compress(llvm::arrayRefFromStringRef(RawTable), Compressed);
       write32(RawTable.size(), OS);
       OS << llvm::toStringRef(Compressed);
     } else {
@@ -228,9 +227,9 @@ llvm::Expected<StringTableIn> readStringTable(llvm::StringRef Data) {
   if (UncompressedSize == 0) // No compression
     Uncompressed = R.rest();
   else {
-    // Don't extratc to a CompressionKind CompressionScheme variable
+    // Don't extratc to a CompressionKind CSpec variable
     // as ratio check is zlib specific
-    if (CompressionImpl *CompressionImplementation =
+    if (CompressionImpl *CImpl =
             getCompressionSpec(CompressionKind::Zlib)->Implementation) {
       // Don't allocate a massive buffer if UncompressedSize was corrupted
       // This is effective for sharded index, but not big monolithic ones, as
@@ -242,9 +241,9 @@ llvm::Expected<StringTableIn> readStringTable(llvm::StringRef Data) {
             "Bad stri table: uncompress {0} -> {1} bytes is implausible",
             R.rest().size(), UncompressedSize);
 
-      if (llvm::Error E = CompressionImplementation->decompress(
-              llvm::arrayRefFromStringRef(R.rest()), UncompressedStorage,
-              UncompressedSize))
+      if (llvm::Error E =
+              CImpl->decompress(llvm::arrayRefFromStringRef(R.rest()),
+                                UncompressedStorage, UncompressedSize))
         return std::move(E);
       Uncompressed = toStringRef(UncompressedStorage);
     } else

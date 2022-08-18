@@ -23,23 +23,23 @@ using namespace llvm::compression;
 namespace {
 
 static void testCompressionAlgorithm(
-    StringRef Input, int Level, CompressionSpec *CompressionScheme,
+    StringRef Input, int Level, CompressionSpec *CSpec,
     std::string ExpectedDestinationBufferTooSmallErrorMessage) {
   SmallVector<uint8_t, 0> Compressed;
   SmallVector<uint8_t, 0> Uncompressed;
-  CompressionScheme->Implementation->compress(arrayRefFromStringRef(Input),
-                                              Compressed, Level);
+  CSpec->Implementation->compress(arrayRefFromStringRef(Input), Compressed,
+                                  Level);
 
   // Check that uncompressed buffer is the same as original.
-  Error E = CompressionScheme->Implementation->decompress(
-      Compressed, Uncompressed, Input.size());
+  Error E =
+      CSpec->Implementation->decompress(Compressed, Uncompressed, Input.size());
   consumeError(std::move(E));
 
   EXPECT_EQ(Input, toStringRef(Uncompressed));
   if (Input.size() > 0) {
     // Uncompression fails if expected length is too short.
-    E = CompressionScheme->Implementation->decompress(Compressed, Uncompressed,
-                                                      Input.size() - 1);
+    E = CSpec->Implementation->decompress(Compressed, Uncompressed,
+                                          Input.size() - 1);
     EXPECT_EQ(ExpectedDestinationBufferTooSmallErrorMessage,
               llvm::toString(std::move(E)));
   }
@@ -53,17 +53,13 @@ static void testZlibCompression(StringRef Input, int Level) {
 }
 
 TEST(CompressionTest, Zlib) {
-  CompressionSpec *CompressionScheme =
-      getCompressionSpec(CompressionKind::Zlib);
-  CompressionImpl *CompressionImplementation =
-      CompressionScheme->Implementation;
-  testZlibCompression("", CompressionImplementation->DefaultLevel);
+  CompressionSpec *CSpec = getCompressionSpec(CompressionKind::Zlib);
+  CompressionImpl *CImpl = CSpec->Implementation;
+  testZlibCompression("", CImpl->DefaultLevel);
 
-  testZlibCompression("hello, world!",
-                      CompressionImplementation->BestSizeLevel);
-  testZlibCompression("hello, world!",
-                      CompressionImplementation->BestSpeedLevel);
-  testZlibCompression("hello, world!", CompressionImplementation->DefaultLevel);
+  testZlibCompression("hello, world!", CImpl->BestSizeLevel);
+  testZlibCompression("hello, world!", CImpl->BestSpeedLevel);
+  testZlibCompression("hello, world!", CImpl->DefaultLevel);
 
   const size_t kSize = 1024;
   char BinaryData[kSize];
@@ -71,9 +67,9 @@ TEST(CompressionTest, Zlib) {
     BinaryData[i] = i & 255;
   StringRef BinaryDataStr(BinaryData, kSize);
 
-  testZlibCompression(BinaryDataStr, CompressionImplementation->BestSizeLevel);
-  testZlibCompression(BinaryDataStr, CompressionImplementation->BestSpeedLevel);
-  testZlibCompression(BinaryDataStr, CompressionImplementation->DefaultLevel);
+  testZlibCompression(BinaryDataStr, CImpl->BestSizeLevel);
+  testZlibCompression(BinaryDataStr, CImpl->BestSpeedLevel);
+  testZlibCompression(BinaryDataStr, CImpl->DefaultLevel);
 }
 #endif
 
@@ -85,17 +81,13 @@ static void testZStdCompression(StringRef Input, int Level) {
 }
 
 TEST(CompressionTest, ZStd) {
-  CompressionSpec *CompressionScheme =
-      getCompressionSpec(CompressionKind::ZStd);
-  CompressionImpl *CompressionImplementation =
-      CompressionScheme->Implementation;
-  testZStdCompression("", CompressionImplementation->DefaultLevel);
+  CompressionSpec *CSpec = getCompressionSpec(CompressionKind::ZStd);
+  CompressionImpl *CImpl = CSpec->Implementation;
+  testZStdCompression("", CImpl->DefaultLevel);
 
-  testZStdCompression("hello, world!",
-                      CompressionImplementation->BestSizeLevel);
-  testZStdCompression("hello, world!",
-                      CompressionImplementation->BestSpeedLevel);
-  testZStdCompression("hello, world!", CompressionImplementation->DefaultLevel);
+  testZStdCompression("hello, world!", CImpl->BestSizeLevel);
+  testZStdCompression("hello, world!", CImpl->BestSpeedLevel);
+  testZStdCompression("hello, world!", CImpl->DefaultLevel);
 
   const size_t kSize = 1024;
   char BinaryData[kSize];
@@ -103,9 +95,9 @@ TEST(CompressionTest, ZStd) {
     BinaryData[i] = i & 255;
   StringRef BinaryDataStr(BinaryData, kSize);
 
-  testZStdCompression(BinaryDataStr, CompressionImplementation->BestSizeLevel);
-  testZStdCompression(BinaryDataStr, CompressionImplementation->BestSpeedLevel);
-  testZStdCompression(BinaryDataStr, CompressionImplementation->DefaultLevel);
+  testZStdCompression(BinaryDataStr, CImpl->BestSizeLevel);
+  testZStdCompression(BinaryDataStr, CImpl->BestSpeedLevel);
+  testZStdCompression(BinaryDataStr, CImpl->DefaultLevel);
 }
 #endif
 } // namespace

@@ -26,13 +26,12 @@ class Error;
 
 namespace compression {
 
-enum class CompressionKind : uint8_t { Zlib = 1, ZStd = 2, Unknown = 255 };
+enum CompressionKind : uint8_t { Zlib = 1, ZStd = 2, Unknown = 255 };
 
 struct CompressionSpec;
 struct CompressionImpl;
 
 CompressionSpec *getCompressionSpec(uint8_t Kind);
-CompressionSpec *getCompressionSpec(CompressionKind Kind);
 
 struct CompressionSpec {
   const CompressionKind Kind;
