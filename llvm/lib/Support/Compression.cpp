@@ -159,27 +159,27 @@ protected:
 };
 
 CompressionSpec *getCompressionSpec(uint8_t Kind) {
+  static ZlibCompressionAlgorithm ZlibI;
+  static CompressionSpec ZlibD = CompressionSpec(
+      CompressionKind::Zlib, &ZlibI, "zlib", bool(LLVM_ENABLE_ZLIB),
+      "unsupported: either llvm was compiled without LLVM_ENABLE_ZLIB "
+      "enabled, or could not find zlib at compile time");
+  static ZStdCompressionAlgorithm ZStdI;
+  static CompressionSpec ZStdD = CompressionSpec(
+      CompressionKind::ZStd, &ZStdI, "zstd", bool(LLVM_ENABLE_ZSTD),
+      "unsupported: either llvm was compiled without LLVM_ENABLE_ZSTD "
+      "enabled, or could not find zstd at compile time");
+  static CompressionSpec UnknownD =
+      CompressionSpec(CompressionKind::Unknown, nullptr, "unknown", false,
+                      "unsupported: scheme of unknown kind");
   switch (Kind) {
   case uint8_t(0):
     return nullptr;
   case uint8_t(CompressionKind::Zlib):
-    static ZlibCompressionAlgorithm ZlibI;
-    static CompressionSpec ZlibD = CompressionSpec(
-        CompressionKind::Zlib, &ZlibI, "zlib", bool(LLVM_ENABLE_ZLIB),
-        "unsupported: either llvm was compiled without LLVM_ENABLE_ZLIB "
-        "enabled, or could not find zlib at compile time");
     return &ZlibD;
   case uint8_t(CompressionKind::ZStd):
-    static ZStdCompressionAlgorithm ZStdI;
-    static CompressionSpec ZStdD = CompressionSpec(
-        CompressionKind::ZStd, &ZStdI, "zstd", bool(LLVM_ENABLE_ZSTD),
-        "unsupported: either llvm was compiled without LLVM_ENABLE_ZSTD "
-        "enabled, or could not find zstd at compile time");
     return &ZStdD;
   default:
-    static CompressionSpec UnknownD =
-        CompressionSpec(CompressionKind::Unknown, nullptr, "unknown", false,
-                        "unsupported: scheme of unknown kind");
     return &UnknownD;
   }
 }
