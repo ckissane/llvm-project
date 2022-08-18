@@ -14,6 +14,8 @@
 #include "llvm/Support/Compression.h"
 #include "llvm/Support/Error.h"
 
+using namespace llvm::compression;
+
 namespace llvm {
 namespace object {
 
@@ -49,7 +51,7 @@ private:
 
   StringRef SectionData;
   uint64_t DecompressedSize;
-  compression::CompressionSpec *CompressionScheme = nullptr;
+  CompressionImpl *CompressionImplementation = nullptr;
 };
 
 } // end namespace object
