@@ -130,6 +130,18 @@ endif()
 # ManagedStatic.cpp uses <pthread>.
 target_link_libraries(SupportTests PRIVATE LLVMTestingSupport ${LLVM_PTHREAD_LIB})
 
+if(LLVM_ENABLE_ZSTD)
+  # CMAKE_BUILD_TYPE is only meaningful to single-configuration generators.
+  if(CMAKE_BUILD_TYPE)
+    string(TOUPPER ${CMAKE_BUILD_TYPE} build_type)
+    get_property(zstd_library TARGET zstd::libzstd_shared PROPERTY LOCATION_${build_type})
+  endif()
+  if(NOT zstd_library)
+    get_property(zstd_library TARGET zstd::libzstd_shared PROPERTY LOCATION)
+  endif()
+  target_link_libraries(SupportTests PRIVATE LLVMTestingSupport ${LLVM_PTHREAD_LIB} ${zstd_library})
+endif()
+
 if(NOT LLVM_INTEGRATED_CRT_ALLOC)
   # The test doesn't pass when using a custom allocator, PR47881.
   add_subdirectory(DynamicLibrary)
