@@ -1,3 +1,4 @@
+include(GetLibraryName)
 set(LLVM_LINK_COMPONENTS
   Support
   )
@@ -139,6 +140,7 @@ if(LLVM_ENABLE_ZSTD)
   if(NOT zstd_library)
     get_property(zstd_library TARGET zstd::libzstd_shared PROPERTY LOCATION)
   endif()
+  get_library_name(${zstd_library} zstd_library)
   target_link_libraries(SupportTests PRIVATE LLVMTestingSupport ${LLVM_PTHREAD_LIB} ${zstd_library})
 endif()
 
