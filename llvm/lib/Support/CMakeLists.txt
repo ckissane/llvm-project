@@ -305,7 +305,6 @@ if(LLVM_ENABLE_ZSTD)
   if(NOT zstd_library)
     get_property(zstd_library TARGET zstd::libzstd_shared PROPERTY LOCATION)
   endif()
-  string(REPLACE ".dll" ".lib" zstd_library "${zstd_library}")
   set(llvm_system_libs ${llvm_system_libs} "${zstd_library}")
 endif()
 
