@@ -227,8 +227,9 @@ void LinkerDriver::addBuffer(std::unique_ptr<MemoryBuffer> mb,
       break;
     }
     if (filename.endswith_insensitive(".dll")) {
-      error(filename + ": bad file type. Did you specify a DLL instead of an "
+      info(filename + ": possibly bad file type. Did you specify a DLL instead of an "
                        "import library?");
+      ctx.symtab.addFile(make<DLLFile>(ctx, mbref));
       break;
     }
     [[fallthrough]];
