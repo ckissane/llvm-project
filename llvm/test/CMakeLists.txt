@@ -8,6 +8,7 @@ llvm_canonicalize_cmake_booleans(
   LLVM_ENABLE_CURL
   LLVM_ENABLE_HTTPLIB
   LLVM_ENABLE_ZLIB
+  LLVM_ENABLE_ZSTD
   LLVM_ENABLE_LIBXML2
   LLVM_INCLUDE_GO_TESTS
   LLVM_LINK_LLVM_DYLIB
@@ -221,6 +222,10 @@ endif()
 
 if (LLVM_INCLUDE_DXIL_TESTS)
   list(APPEND LLVM_TEST_DEPENDS dxil-dis)
+endif()
+
+if (LLVM_ENABLE_ZSTD)
+  list(APPEND LLVM_TEST_DEPENDS zstd::libzstd_shared)
 endif()
 
 add_custom_target(llvm-test-depends DEPENDS ${LLVM_TEST_DEPENDS})

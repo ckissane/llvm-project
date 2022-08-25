@@ -330,6 +330,8 @@ if(LLVM_ENABLE_ZSTD)
   # CMAKE_BUILD_TYPE is only meaningful to single-configuration generators.
   message(WARNING "ZSTDD")
   message(WARNING zstd::libzstd_shared)
+  get_target_property(zstd_link_libs zstd::libzstd_shared INTERFACE_LINK_LIBRARIES)
+  message(WARNING ${zstd_link_libs})
   # print_properties()
   print_target_properties(zstd::libzstd_shared)
   if(CMAKE_BUILD_TYPE)
@@ -368,5 +370,12 @@ if(LLVM_WITH_Z3)
   target_include_directories(LLVMSupport SYSTEM
     PRIVATE
     ${Z3_INCLUDE_DIR}
+    )
+endif()
+
+if(LLVM_ENABLE_ZSTD)
+  target_include_directories(LLVMSupport SYSTEM
+    PRIVATE
+    ${zstd_INCLUDE_DIR}
     )
 endif()
