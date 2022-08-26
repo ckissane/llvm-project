@@ -224,10 +224,6 @@ if (LLVM_INCLUDE_DXIL_TESTS)
   list(APPEND LLVM_TEST_DEPENDS dxil-dis)
 endif()
 
-if (LLVM_ENABLE_ZSTD)
-  list(APPEND LLVM_TEST_DEPENDS zstd::libzstd_shared)
-endif()
-
 add_custom_target(llvm-test-depends DEPENDS ${LLVM_TEST_DEPENDS})
 set_target_properties(llvm-test-depends PROPERTIES FOLDER "Tests")
 
