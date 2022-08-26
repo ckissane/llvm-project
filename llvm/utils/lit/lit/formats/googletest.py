@@ -37,9 +37,6 @@ class GoogleTest(TestFormat):
                 "unable to discover google-tests in %r: %s. Process output: %s"
                 % (path, sys.exc_info()[1], exc.output))
             return None
-        print("S",lit.util.to_string(out),"S")
-        for line in out.splitlines(False):
-            print("L",lit.util.to_string(line),lit.util.to_string(line).startswith('  '))
         return sum(
             map(lambda line: lit.util.to_string(line).startswith('  '),
                 out.splitlines(False)))
@@ -106,8 +103,6 @@ class GoogleTest(TestFormat):
             # Handle GTest parametrized and typed tests, whose name includes
             # some Path Separator's.
             testPath, namePrefix = os.path.split(testPath)
-            print("J",namePrefix,"SEP", testName)
-            print("N",namePrefix+"/"+testName,"==",os.path.join(namePrefix, testName))
             testName = os.path.join(namePrefix, testName)
 
         testName,total_shards = os.path.split(testName)
