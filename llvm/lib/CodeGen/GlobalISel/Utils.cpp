@@ -321,7 +321,7 @@ Optional<ValueAndVReg> getConstantVRegValWithLookThrough(
     case TargetOpcode::G_ANYEXT:
       if (!LookThroughAnyExt)
         return None;
-      LLVM_FALLTHROUGH;
+      [[fallthrough]];
     case TargetOpcode::G_TRUNC:
     case TargetOpcode::G_SEXT:
     case TargetOpcode::G_ZEXT:
@@ -1029,7 +1029,7 @@ Optional<ValueAndVReg> getAnyConstantSplat(Register VReg,
   if (!isBuildVectorOp(MI->getOpcode()))
     return None;
 
-  Optional<ValueAndVReg> SplatValAndReg = None;
+  Optional<ValueAndVReg> SplatValAndReg;
   for (MachineOperand &Op : MI->uses()) {
     Register Element = Op.getReg();
     auto ElementValAndReg =

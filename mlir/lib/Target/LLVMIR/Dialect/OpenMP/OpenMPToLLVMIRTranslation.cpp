@@ -970,10 +970,14 @@ convertOmpSimdLoop(Operation &opInst, llvm::IRBuilderBase &builder,
   if (llvm::Optional<uint64_t> simdlenVar = loop.simdlen())
     simdlen = builder.getInt64(simdlenVar.value());
 
+  llvm::ConstantInt *safelen = nullptr;
+  if (llvm::Optional<uint64_t> safelenVar = loop.safelen())
+    safelen = builder.getInt64(safelenVar.value());
+
   ompBuilder->applySimd(
       loopInfo,
       loop.if_expr() ? moduleTranslation.lookupValue(loop.if_expr()) : nullptr,
-      simdlen);
+      simdlen, safelen);
 
   builder.restoreIP(afterIP);
   return success();
@@ -1285,7 +1289,8 @@ convertOmpThreadprivate(Operation &opInst, llvm::IRBuilderBase &builder,
     return opInst.emitError("Addressing symbol not found");
   LLVM::AddressOfOp addressOfOp = dyn_cast<LLVM::AddressOfOp>(symOp);
 
-  LLVM::GlobalOp global = addressOfOp.getGlobal();
+  LLVM::GlobalOp global =
+      addressOfOp.getGlobal(moduleTranslation.symbolTable());
   llvm::GlobalValue *globalValue = moduleTranslation.lookupGlobal(global);
   llvm::Value *data =
       builder.CreateBitCast(globalValue, builder.getInt8PtrTy());
