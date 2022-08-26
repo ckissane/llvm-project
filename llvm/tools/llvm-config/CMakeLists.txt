@@ -17,15 +17,11 @@ add_llvm_tool(llvm-config
 # Compute the substitution values for various items.
 get_property(SUPPORT_SYSTEM_LIBS TARGET LLVMSupport PROPERTY LLVM_SYSTEM_LIBS)
 get_property(WINDOWSMANIFEST_SYSTEM_LIBS TARGET LLVMWindowsManifest PROPERTY LLVM_SYSTEM_LIBS)
-set(NEED_MINGW FALSE)
+
 foreach(l ${SUPPORT_SYSTEM_LIBS} ${WINDOWSMANIFEST_SYSTEM_LIBS})
   if(MSVC)
     if(IS_ABSOLUTE ${l})
-      if (l MATCHES "dll$")
-        # set(NEED_MINGW TRUE)
-      else()
       set(SYSTEM_LIBS ${SYSTEM_LIBS} "${l}")
-      endif()
     else()
       set(SYSTEM_LIBS ${SYSTEM_LIBS} "${l}.lib")
     endif()
@@ -43,10 +39,7 @@ foreach(l ${SUPPORT_SYSTEM_LIBS} ${WINDOWSMANIFEST_SYSTEM_LIBS})
     endif()
   endif()
 endforeach()
-if(NEED_MINGW)
-  message("llvm-config: adding -lldmingw")
-  set(SYSTEM_LIBS ${SYSTEM_LIBS} "-lldmingw")
-endif()
+
 string(REPLACE ";" " " SYSTEM_LIBS "${SYSTEM_LIBS}")
 
 # Fetch target specific compile options, e.g. RTTI option
