@@ -296,44 +296,8 @@ if(LLVM_ENABLE_ZLIB)
   set(llvm_system_libs ${llvm_system_libs} "${zlib_library}")
 endif()
 
-# Get all propreties that cmake supports
-if(NOT CMAKE_PROPERTY_LIST)
-  execute_process(COMMAND cmake --help-property-list OUTPUT_VARIABLE CMAKE_PROPERTY_LIST)
-  
-  # Convert command output into a CMake list
-  string(REGEX REPLACE ";" "\\\\;" CMAKE_PROPERTY_LIST "${CMAKE_PROPERTY_LIST}")
-  string(REGEX REPLACE "\n" ";" CMAKE_PROPERTY_LIST "${CMAKE_PROPERTY_LIST}")
-endif()
-  
-function(print_properties)
-  message("CMAKE_PROPERTY_LIST = ${CMAKE_PROPERTY_LIST}")
-endfunction()
-  
-function(print_target_properties target)
-  if(NOT TARGET ${target})
-    message(STATUS "There is no target named '${target}'")
-    return()
-  endif()
-
-  foreach(property ${CMAKE_PROPERTY_LIST})
-      string(REPLACE "<CONFIG>" "${CMAKE_BUILD_TYPE}" property ${property})
-
-      get_property(was_set TARGET ${target} PROPERTY ${property} SET)
-      if(was_set)
-          get_target_property(value ${target} ${property})
-          message("${target} ${property} = ${value}")
-      endif()
-  endforeach()
-endfunction()
-
 if(LLVM_ENABLE_ZSTD)
   # CMAKE_BUILD_TYPE is only meaningful to single-configuration generators.
-  message(WARNING "ZSTDD")
-  message(WARNING zstd::libzstd_shared)
-  get_target_property(zstd_link_libs zstd::libzstd_shared INTERFACE_LINK_LIBRARIES)
-  
-  # print_properties()
-  # print_target_properties(zstd::libzstd_shared)
   if(CMAKE_BUILD_TYPE)
     string(TOUPPER ${CMAKE_BUILD_TYPE} build_type)
     get_property(zstd_library TARGET zstd::libzstd_shared PROPERTY LOCATION_${build_type})
@@ -341,13 +305,7 @@ if(LLVM_ENABLE_ZSTD)
   if(NOT zstd_library)
     get_property(zstd_library TARGET zstd::libzstd_shared PROPERTY LOCATION)
   endif()
-  message(WARNING ${zstd_library})
-  # get_library_name(${zstd_library} zstd_library)
-  if(MSVC)
-    if (zstd_library MATCHES "zstd[.]dll$")
-      string(REGEX REPLACE "bin.zstd[.]dll$"  "lib/zstd.lib" zstd_library "${zstd_library}")
-    endif()
-  endif()
+  get_library_name(${zstd_library} zstd_library)
   set(llvm_system_libs ${llvm_system_libs} "${zstd_library}")
 endif()
 
