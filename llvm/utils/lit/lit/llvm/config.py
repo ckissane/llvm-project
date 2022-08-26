@@ -113,10 +113,6 @@ class LLVMConfig(object):
         if have_zlib:
             features.add('zlib')
 
-        have_zstd = getattr(config, 'have_zstd', None)
-        if have_zstd:
-            features.add('zstd')
-
         # Check if we should run long running tests.
         long_tests = lit_config.params.get('run_long_tests', None)
         if lit.util.pythonize_bool(long_tests):

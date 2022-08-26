@@ -20,7 +20,9 @@ if (HAS_WERROR_GLOBAL_CTORS)
     string(REPLACE "-Werror=global-constructors" "" CMAKE_CXX_FLAGS ${CMAKE_CXX_FLAGS})
   endif()
 endif()
+
 set(imported_libs "")
+
 if(LLVM_ENABLE_ZLIB)
   list(APPEND imported_libs ZLIB::ZLIB)
 endif()
