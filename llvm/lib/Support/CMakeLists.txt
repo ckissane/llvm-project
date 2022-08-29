@@ -21,8 +21,6 @@ if (HAS_WERROR_GLOBAL_CTORS)
   endif()
 endif()
 
-set(imported_libs "")
-
 if(LLVM_ENABLE_ZLIB)
   list(APPEND imported_libs ZLIB::ZLIB)
 endif()
