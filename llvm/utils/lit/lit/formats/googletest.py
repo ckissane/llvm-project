@@ -101,9 +101,9 @@ class GoogleTest(TestFormat):
         testPath,testName = os.path.split(test.getSourcePath())
         while not os.path.exists(testPath):
             # Handle GTest parametrized and typed tests, whose name includes
-            # some Path Separator's.
+            # some '/'s.
             testPath, namePrefix = os.path.split(testPath)
-            testName = os.path.join(namePrefix, testName)
+            testName = namePrefix + '/' + testName
 
         testName,total_shards = os.path.split(testName)
         testName,shard_idx = os.path.split(testName)
