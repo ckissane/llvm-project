@@ -15,7 +15,9 @@
 #include "llvm/ADT/StringRef.h"
 #include "llvm/Config/config.h"
 #include "llvm/Support/Error.h"
+#define GTEST_DONT_DEFINE_TEST 1
 #include "gtest/gtest.h"
+#define GTEST_DONT_DEFINE_TEST 0
 
 using namespace llvm;
 using namespace llvm::compression;
@@ -39,8 +41,11 @@ static void testZlibCompression(StringRef Input, int Level) {
     EXPECT_EQ("zlib error: Z_BUF_ERROR", llvm::toString(std::move(E)));
   }
 }
+#endif
 
-TEST(CompressionTest, Zlib) {
+GTEST_TEST(CompressionTest, Zlib) {
+
+#if LLVM_ENABLE_ZLIB
   testZlibCompression("", zlib::DefaultCompression);
 
   testZlibCompression("hello, world!", zlib::NoCompression);
@@ -58,8 +63,9 @@ TEST(CompressionTest, Zlib) {
   testZlibCompression(BinaryDataStr, zlib::BestSizeCompression);
   testZlibCompression(BinaryDataStr, zlib::BestSpeedCompression);
   testZlibCompression(BinaryDataStr, zlib::DefaultCompression);
-}
 #endif
+
+}
 
 #if LLVM_ENABLE_ZSTD
 static void testZstdCompression(StringRef Input, int Level) {
@@ -78,8 +84,10 @@ static void testZstdCompression(StringRef Input, int Level) {
     EXPECT_EQ("Destination buffer is too small", llvm::toString(std::move(E)));
   }
 }
+#endif
 
-TEST(CompressionTest, Zstd) {
+GTEST_TEST(CompressionTest, Zstd) {
+#if LLVM_ENABLE_ZSTD
   testZstdCompression("", zstd::DefaultCompression);
 
   testZstdCompression("hello, world!", zstd::NoCompression);
@@ -97,6 +105,6 @@ TEST(CompressionTest, Zstd) {
   testZstdCompression(BinaryDataStr, zstd::BestSizeCompression);
   testZstdCompression(BinaryDataStr, zstd::BestSpeedCompression);
   testZstdCompression(BinaryDataStr, zstd::DefaultCompression);
-}
 #endif
+}
 }
