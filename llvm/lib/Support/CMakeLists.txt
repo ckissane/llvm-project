@@ -339,10 +339,3 @@ if(LLVM_WITH_Z3)
     ${Z3_INCLUDE_DIR}
     )
 endif()
-
-if(LLVM_ENABLE_ZSTD)
-  target_include_directories(LLVMSupport SYSTEM
-    PRIVATE
-    ${zstd_INCLUDE_DIR}
-    )
-endif()
