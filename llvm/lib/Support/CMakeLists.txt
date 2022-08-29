@@ -26,7 +26,12 @@ if(LLVM_ENABLE_ZLIB)
 endif()
 
 if(LLVM_ENABLE_ZSTD)
-  list(APPEND imported_libs zstd::libzstd_shared)
+  if(TARGET zstd::libzstd_static)
+    list(APPEND imported_libs zstd::libzstd_static)
+  elseif(TARGET zstd::libzstd_shared)
+    list(APPEND imported_libs zstd::libzstd_shared)
+  
+  endif()
 endif()
 
 if( MSVC OR MINGW )
@@ -297,6 +302,19 @@ if(LLVM_ENABLE_ZLIB)
 endif()
 
 if(LLVM_ENABLE_ZSTD)
+  if(TARGET zstd::libzstd_static)
+  # CMAKE_BUILD_TYPE is only meaningful to single-configuration generators.
+  if(CMAKE_BUILD_TYPE)
+    string(TOUPPER ${CMAKE_BUILD_TYPE} build_type)
+    get_property(zstd_library TARGET zstd::libzstd_static PROPERTY LOCATION_${build_type})
+  endif()
+  if(NOT zstd_library)
+    get_property(zstd_library TARGET zstd::libzstd_static PROPERTY LOCATION)
+  endif()
+  get_library_name(${zstd_library} zstd_library)
+  set(llvm_system_libs ${llvm_system_libs} "${zstd_library}")
+
+else()
   # CMAKE_BUILD_TYPE is only meaningful to single-configuration generators.
   if(CMAKE_BUILD_TYPE)
     string(TOUPPER ${CMAKE_BUILD_TYPE} build_type)
@@ -307,6 +325,8 @@ if(LLVM_ENABLE_ZSTD)
   endif()
   get_library_name(${zstd_library} zstd_library)
   set(llvm_system_libs ${llvm_system_libs} "${zstd_library}")
+
+endif()
 endif()
 
 if(LLVM_ENABLE_TERMINFO)
