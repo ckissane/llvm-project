@@ -486,7 +486,7 @@ set(LLVM_ENABLE_ZLIB "ON" CACHE STRING "Use zlib for compression/decompression i
 
 set(LLVM_ENABLE_ZSTD "ON" CACHE STRING "Use zstd for compression/decompression if available. Can be ON, OFF, or FORCE_ON")
 
-set(LLVM_ZSTD_PREFERENCE_LIST "zstd::libzstd_shared;zstd::libzstd_static" CACHE STRING "Semicolon-separated list of targets to consider for zstd. First supported target in list will be used. EG: zstd::libzstd_shared;zstd::libzstd_static")
+set(LLVM_USE_STATIC_ZSTD FALSE CACHE BOOL "Use static version of zstd. Can be TRUE, FALSE")
 
 set(LLVM_ENABLE_CURL "OFF" CACHE STRING "Use libcurl for the HTTP client if available. Can be ON, OFF, or FORCE_ON")
 
