@@ -25,8 +25,6 @@ if(LLVM_ENABLE_ZLIB)
   list(APPEND imported_libs ZLIB::ZLIB)
 endif()
 
-set(zstd_target zstd::libzstd_nonexistant)
-
 if(LLVM_ENABLE_ZSTD)
   if(TARGET zstd::libzstd_shared AND NOT LLVM_USE_STATIC_ZSTD)
     set(zstd_target zstd::libzstd_shared)
