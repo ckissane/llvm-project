@@ -73,6 +73,22 @@ Error compression::decompress(DebugCompressionType T, ArrayRef<uint8_t> Input,
   return decompress(formatFor(T), Input, Output, UncompressedSize);
 }
 
+Error compression::decompress(compression::Format F, ArrayRef<uint8_t> Input,
+                              uint8_t *Output, size_t &UncompressedSize) {
+  switch (F) {
+  case compression::Format::Zlib:
+    return zlib::uncompress(Input, Output, UncompressedSize);
+  case compression::Format::Zstd:
+    return zstd::uncompress(Input, Output, UncompressedSize);
+  }
+  llvm_unreachable("");
+}
+
+Error compression::decompress(DebugCompressionType T, ArrayRef<uint8_t> Input,
+                              uint8_t *Output, size_t &UncompressedSize) {
+  return decompress(formatFor(T), Input, Output, UncompressedSize);
+}
+
 #if LLVM_ENABLE_ZLIB
 
 static StringRef convertZlibCodeToString(int Code) {

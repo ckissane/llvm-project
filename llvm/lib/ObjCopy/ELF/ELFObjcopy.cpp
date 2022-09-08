@@ -505,12 +505,18 @@ static Error replaceAndRemoveSections(const CommonConfig &Config,
   if (Error E = Obj.removeSections(ELFConfig.AllowBrokenLinks, RemovePred))
     return E;
 
+  const ElfType OutputElfType =
+      getOutputElfType(Config.OutputArch.value_or(MachineInfo()));
+  const bool Is64Bit =
+      OutputElfType == ELFT_ELF64LE || OutputElfType == ELFT_ELF64BE;
   if (Config.CompressionType != DebugCompressionType::None) {
+
     if (Error Err = replaceDebugSections(
             Obj, isCompressable,
-            [&Config, &Obj](const SectionBase *S) -> Expected<SectionBase *> {
+            [&Config, &Obj,
+             Is64Bit](const SectionBase *S) -> Expected<SectionBase *> {
               return &Obj.addSection<CompressedSection>(
-                  CompressedSection(*S, Config.CompressionType));
+                  CompressedSection(*S, Config.CompressionType, Is64Bit));
             }))
       return Err;
   } else if (Config.DecompressDebugSections) {

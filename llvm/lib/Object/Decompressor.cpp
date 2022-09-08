@@ -14,16 +14,15 @@
 #include "llvm/Support/Endian.h"
 
 using namespace llvm;
+using namespace llvm::compression;
 using namespace llvm::support::endian;
 using namespace object;
 
 Expected<Decompressor> Decompressor::create(StringRef Name, StringRef Data,
                                             bool IsLE, bool Is64Bit) {
-  if (!compression::zlib::isAvailable())
-    return createError("zlib is not available");
 
   Decompressor D(Data);
-  if (Error Err = D.consumeCompressedZLibHeader(Is64Bit, IsLE))
+  if (Error Err = D.consumeCompressedSectionHeader(Is64Bit, IsLE))
     return std::move(Err);
   return D;
 }
@@ -31,8 +30,8 @@ Expected<Decompressor> Decompressor::create(StringRef Name, StringRef Data,
 Decompressor::Decompressor(StringRef Data)
     : SectionData(Data), DecompressedSize(0) {}
 
-Error Decompressor::consumeCompressedZLibHeader(bool Is64Bit,
-                                                bool IsLittleEndian) {
+Error Decompressor::consumeCompressedSectionHeader(bool Is64Bit,
+                                                   bool IsLittleEndian) {
   using namespace ELF;
   uint64_t HdrSize = Is64Bit ? sizeof(Elf64_Chdr) : sizeof(Elf32_Chdr);
   if (SectionData.size() < HdrSize)
@@ -40,10 +39,25 @@ Error Decompressor::consumeCompressedZLibHeader(bool Is64Bit,
 
   DataExtractor Extractor(SectionData, IsLittleEndian, 0);
   uint64_t Offset = 0;
-  if (Extractor.getUnsigned(&Offset, Is64Bit ? sizeof(Elf64_Word)
-                                             : sizeof(Elf32_Word)) !=
-      ELFCOMPRESS_ZLIB)
+  uint64_t ELFCompressionSchemeId = Extractor.getUnsigned(
+      &Offset, Is64Bit ? sizeof(Elf64_Word) : sizeof(Elf32_Word));
+
+  if (ELFCompressionSchemeId == ELFCOMPRESS_ZLIB)
+    CompressionType = llvm::DebugCompressionType::Z;
+  if (ELFCompressionSchemeId == ELFCOMPRESS_ZSTD)
+    CompressionType = llvm::DebugCompressionType::Zstd;
+
+  if (CompressionType == llvm::DebugCompressionType::None)
     return createError("unsupported compression type");
+  if (llvm::compression::getReasonIfUnsupported(
+          compression::formatFor(CompressionType)) != nullptr) {
+    switch (compression::formatFor(CompressionType)) {
+    case llvm::compression::Format::Zstd:
+      return createError("zstd is not available");
+    default:
+      return createError("zlib is not available");
+    }
+  }
 
   // Skip Elf64_Chdr::ch_reserved field.
   if (Is64Bit)
@@ -57,6 +71,7 @@ Error Decompressor::consumeCompressedZLibHeader(bool Is64Bit,
 
 Error Decompressor::decompress(MutableArrayRef<uint8_t> Buffer) {
   size_t Size = Buffer.size();
-  return compression::zlib::uncompress(arrayRefFromStringRef(SectionData),
-                                       Buffer.data(), Size);
+  return compression::decompress(compression::formatFor(CompressionType),
+                                 arrayRefFromStringRef(SectionData),
+                                 Buffer.data(), Size);
 }

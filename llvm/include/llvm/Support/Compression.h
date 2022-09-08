@@ -121,6 +121,11 @@ Error decompress(Format F, ArrayRef<uint8_t> Input,
 Error decompress(DebugCompressionType T, ArrayRef<uint8_t> Input,
                  SmallVectorImpl<uint8_t> &Output, size_t UncompressedSize);
 
+Error decompress(Format F, ArrayRef<uint8_t> Input, uint8_t *Output,
+                 size_t &UncompressedSize);
+Error decompress(DebugCompressionType T, ArrayRef<uint8_t> Input,
+                 uint8_t *Output, size_t &UncompressedSize);
+
 } // End of namespace compression
 
 } // End of namespace llvm
