@@ -527,26 +527,28 @@ Error ELFSectionWriter<ELFT>::visit(const CompressedSection &Sec) {
 }
 
 CompressedSection::CompressedSection(const SectionBase &Sec,
-                                     DebugCompressionType CompressionType)
-    : SectionBase(Sec), CompressionType(CompressionType),
+                                     DebugCompressionType CompressionType,
+                                     bool Is64Bits)
+    : SectionBase(Sec), Is64Bits(Is64Bits), CompressionType(CompressionType),
       DecompressedSize(Sec.OriginalData.size()), DecompressedAlign(Sec.Align) {
   compression::compress(compression::Params(CompressionType), OriginalData,
                         CompressedData);
 
   Flags |= ELF::SHF_COMPRESSED;
   size_t ChdrSize =
-      std::max(std::max(sizeof(object::Elf_Chdr_Impl<object::ELF64LE>),
-                        sizeof(object::Elf_Chdr_Impl<object::ELF64BE>)),
-               std::max(sizeof(object::Elf_Chdr_Impl<object::ELF32LE>),
-                        sizeof(object::Elf_Chdr_Impl<object::ELF32BE>)));
+      Is64Bits ? std::max(sizeof(object::Elf_Chdr_Impl<object::ELF64LE>),
+                          sizeof(object::Elf_Chdr_Impl<object::ELF64BE>))
+               : std::max(sizeof(object::Elf_Chdr_Impl<object::ELF32LE>),
+                          sizeof(object::Elf_Chdr_Impl<object::ELF32BE>));
   Size = ChdrSize + CompressedData.size();
   Align = 8;
 }
 
 CompressedSection::CompressedSection(ArrayRef<uint8_t> CompressedData,
                                      uint32_t ChType, uint64_t DecompressedSize,
-                                     uint64_t DecompressedAlign)
-    : ChType(ChType), CompressionType(DebugCompressionType::None),
+                                     uint64_t DecompressedAlign, bool Is64Bits)
+    : ChType(ChType), Is64Bits(Is64Bits),
+      CompressionType(DebugCompressionType::None),
       DecompressedSize(DecompressedSize), DecompressedAlign(DecompressedAlign) {
   OriginalData = CompressedData;
 }
@@ -1724,8 +1726,9 @@ Expected<SectionBase &> ELFBuilder<ELFT>::makeSection(const Elf_Shdr &Shdr) {
     if (!(Shdr.sh_flags & ELF::SHF_COMPRESSED))
       return Obj.addSection<Section>(*Data);
     auto *Chdr = reinterpret_cast<const Elf_Chdr_Impl<ELFT> *>(Data->data());
-    return Obj.addSection<CompressedSection>(CompressedSection(
-        *Data, Chdr->ch_type, Chdr->ch_size, Chdr->ch_addralign));
+    return Obj.addSection<CompressedSection>(
+        CompressedSection(*Data, Chdr->ch_type, Chdr->ch_size,
+                          Chdr->ch_addralign, ELFT::Is64Bits));
   }
   }
 }

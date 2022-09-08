@@ -537,6 +537,7 @@ class CompressedSection : public SectionBase {
   MAKE_SEC_WRITER_FRIEND
 
   uint32_t ChType = 0;
+  bool Is64Bits;
   DebugCompressionType CompressionType;
   uint64_t DecompressedSize;
   uint64_t DecompressedAlign;
@@ -544,9 +545,10 @@ class CompressedSection : public SectionBase {
 
 public:
   CompressedSection(const SectionBase &Sec,
-                    DebugCompressionType CompressionType);
+                    DebugCompressionType CompressionType, bool Is64Bits);
   CompressedSection(ArrayRef<uint8_t> CompressedData, uint32_t ChType,
-                    uint64_t DecompressedSize, uint64_t DecompressedAlign);
+                    uint64_t DecompressedSize, uint64_t DecompressedAlign,
+                    bool Is64Bits);
 
   uint64_t getDecompressedSize() const { return DecompressedSize; }
   uint64_t getDecompressedAlign() const { return DecompressedAlign; }
