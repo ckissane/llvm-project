@@ -56,8 +56,8 @@ Error uncompress(ArrayRef<uint8_t> Input,
 namespace zstd {
 
 constexpr int NoCompression = -5;
-constexpr int BestSpeedCompression = 1;
-constexpr int DefaultCompression = 5;
+constexpr int BestSpeedCompression = 2;
+constexpr int DefaultCompression = 7;
 constexpr int BestSizeCompression = 12;
 
 bool isAvailable();
